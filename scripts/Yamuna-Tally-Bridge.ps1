@@ -74,11 +74,28 @@ function Sync-TallyWithCloud {
     try {
         Write-Host "[Sync] Pulling Sundry Debtors & Products from Tally Prime..." -ForegroundColor Cyan
         
-        $debtorResp = Invoke-RestMethod -Uri $TallyUrl -Method Post -Body $xmlDebtorQuery -ContentType "application/xml; charset=utf-8" -TimeoutSec 6 -ErrorAction Stop
-        $stockResp = Invoke-RestMethod -Uri $TallyUrl -Method Post -Body $xmlStockQuery -ContentType "application/xml; charset=utf-8" -TimeoutSec 6 -ErrorAction Stop
+        $debtorXmlStr = ""
+        try {
+            $debtorResp = Invoke-RestMethod -Uri $TallyUrl -Method Post -Body $xmlDebtorQuery -ContentType "application/xml; charset=utf-8" -TimeoutSec 6
+            $debtorXmlStr = if ($debtorResp -is [System.Xml.XmlDocument]) { $debtorResp.OuterXml } else { [string]$debtorResp }
+        } catch {
+            Write-Host "[Debtor Notice] $($_.Exception.Message)" -ForegroundColor Gray
+        }
+
+        $stockXmlStr = ""
+        try {
+            $stockResp = Invoke-RestMethod -Uri $TallyUrl -Method Post -Body $xmlStockQuery -ContentType "application/xml; charset=utf-8" -TimeoutSec 6
+            $stockXmlStr = if ($stockResp -is [System.Xml.XmlDocument]) { $stockResp.OuterXml } else { [string]$stockResp }
+        } catch {
+            Write-Host "[Stock Notice] $($_.Exception.Message)" -ForegroundColor Gray
+        }
         
-        $combinedXml = "$debtorResp`n$stockResp"
+        $combinedXml = "$debtorXmlStr`n$stockXmlStr"
         
+        if ([string]::IsNullOrWhiteSpace($combinedXml)) {
+            throw "Could not reach Tally Prime on port 9000. Ensure Tally Prime is open."
+        }
+
         Write-Host "[Sync] Uploading Customers & Products to Yamuna Cloud..." -ForegroundColor Cyan
         $pushResult = Invoke-RestMethod -Uri "$CloudUrl/api/masters/tally-push" -Method Post -Body $combinedXml -ContentType "application/xml; charset=utf-8" -TimeoutSec 10
         
