@@ -43,10 +43,24 @@ export default function TallySync({
     setSyncResult(null);
     try {
       const res = await api.syncAllToTally();
-      setSyncResult(res);
+      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      if (!res.success && isCloud) {
+        setSyncResult({
+          success: false,
+          message: '💡 Cloud Portal: Tally Prime is installed on your local PC. Double-click "Sync_Tally_to_Cloud.bat" on your computer to sync bills directly into Tally Prime, or open http://localhost:5005.'
+        });
+      } else {
+        setSyncResult(res);
+      }
       if (onRefreshInvoices) onRefreshInvoices();
     } catch (err) {
-      setSyncResult({ success: false, error: err.message });
+      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      setSyncResult({
+        success: false,
+        message: isCloud
+          ? '💡 Cloud Portal: Tally Prime is installed on your local PC. Double-click "Sync_Tally_to_Cloud.bat" on your computer to sync bills directly into Tally Prime, or open http://localhost:5005.'
+          : (err.message || 'Tally sync failed. Please check if Tally Prime is running on port 9000.')
+      });
     } finally {
       setSyncingAll(false);
     }
@@ -207,7 +221,14 @@ export default function TallySync({
               color: syncResult.success ? '#15803d' : '#b91c1c'
             }}
           >
-            {syncResult.message || syncResult.error}
+            <div>{syncResult.message || syncResult.error}</div>
+            {Array.isArray(syncResult.errors) && syncResult.errors.length > 0 && (
+              <ul style={{ margin: '6px 0 0 16px', padding: 0 }}>
+                {syncResult.errors.map((err, i) => (
+                  <li key={i}>{err}</li>
+                ))}
+              </ul>
+            )}
           </div>
         )}
       </div>
