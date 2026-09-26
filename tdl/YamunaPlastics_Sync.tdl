@@ -9,7 +9,7 @@
 ;; Variable Definitions (Persistent across Tally restarts)
 ;; -------------------------------------------------------------------------
 [System: Variable]
-    YP_Var_ApiHost  : "http://localhost:5005"
+    YP_Var_ApiHost  : "https://yamuna.sanmatisolution.com"
     YP_Var_FilePath : "C:\TallyPrime\YamunaPlastics_Import.xml"
 
 [Variable: YP_Var_ApiHost]
@@ -21,7 +21,7 @@
     Persistent : Yes
 
 [System: Formula]
-    YP_EffectiveAPIHost : if $$IsEmpty:##YP_Var_ApiHost then "http://localhost:5005" else ##YP_Var_ApiHost
+    YP_EffectiveAPIHost : if $$IsEmpty:##YP_Var_ApiHost then "https://yamuna.sanmatisolution.com" else ##YP_Var_ApiHost
     YP_API_ExportXML    : @@YP_EffectiveAPIHost + "/api/tally/export-xml"
     YP_API_Status       : @@YP_EffectiveAPIHost + "/api/tally/status"
     YP_EffectiveFilePath: if $$IsEmpty:##YP_Var_FilePath then "C:\TallyPrime\YamunaPlastics_Import.xml" else ##YP_Var_FilePath
