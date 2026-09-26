@@ -206,6 +206,21 @@ router.post('/', async (req, res) => {
       address: body.address || '',
       phone: body.phone || '',
       placeOfSupply: body.placeOfSupply || (isInterstate ? body.state : 'Gujarat'),
+      shipTo: body.shipTo ? {
+        name: body.shipTo.name || body.partyName || 'Cash Customer',
+        gstin: body.shipTo.gstin !== undefined ? body.shipTo.gstin : (body.gstin || ''),
+        state: body.shipTo.state || body.state || 'Gujarat',
+        stateCode: body.shipTo.stateCode || partyStateCode || '24',
+        address: body.shipTo.address !== undefined ? body.shipTo.address : (body.address || ''),
+        phone: body.shipTo.phone !== undefined ? body.shipTo.phone : (body.phone || '')
+      } : {
+        name: body.partyName || 'Cash Customer',
+        gstin: body.gstin || '',
+        state: body.state || 'Gujarat',
+        stateCode: partyStateCode || '24',
+        address: body.address || '',
+        phone: body.phone || ''
+      },
       isInterstate,
       paymentMode: body.paymentMode || 'Credit 30 Days',
       vehicleNo: body.vehicleNo || '',
@@ -342,6 +357,21 @@ router.put('/:id', async (req, res) => {
       address: body.address !== undefined ? body.address : existing.address,
       phone: body.phone !== undefined ? body.phone : existing.phone,
       placeOfSupply: body.placeOfSupply || existing.placeOfSupply,
+      shipTo: body.shipTo ? {
+        name: body.shipTo.name || body.partyName || existing.partyName,
+        gstin: body.shipTo.gstin !== undefined ? body.shipTo.gstin : (body.gstin || existing.gstin || ''),
+        state: body.shipTo.state || body.state || existing.state || 'Gujarat',
+        stateCode: body.shipTo.stateCode || partyStateCode || existing.stateCode || '24',
+        address: body.shipTo.address !== undefined ? body.shipTo.address : (body.address || existing.address || ''),
+        phone: body.shipTo.phone !== undefined ? body.shipTo.phone : (body.phone || existing.phone || '')
+      } : (existing.shipTo || {
+        name: body.partyName || existing.partyName,
+        gstin: body.gstin || existing.gstin || '',
+        state: body.state || existing.state || 'Gujarat',
+        stateCode: partyStateCode,
+        address: body.address || existing.address || '',
+        phone: body.phone || existing.phone || ''
+      }),
       destination: body.destination !== undefined ? body.destination : existing.destination,
       deliveryNote: body.deliveryNote !== undefined ? body.deliveryNote : existing.deliveryNote,
       deliveryNoteDate: body.deliveryNoteDate !== undefined ? body.deliveryNoteDate : existing.deliveryNoteDate,

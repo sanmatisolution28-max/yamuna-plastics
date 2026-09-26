@@ -14,7 +14,7 @@ export default function BillForm({
 }) {
   const isEditing = Boolean(editingInvoice && editingInvoice.id);
 
-  // Customer State
+  // 1. Bill To (Buyer) Details
   const [selectedPartyId, setSelectedPartyId] = useState('');
   const [partySearch, setPartySearch] = useState('');
   const [showCustomParty, setShowCustomParty] = useState(false);
@@ -28,7 +28,18 @@ export default function BillForm({
     placeOfSupply: 'Gujarat'
   });
 
-  // Invoice Metadata
+  // 2. Ship To (Consignee) Details
+  const [sameAsBillTo, setSameAsBillTo] = useState(true);
+  const [shipToDetails, setShipToDetails] = useState({
+    name: '',
+    gstin: '',
+    state: 'Gujarat',
+    stateCode: '24',
+    address: '',
+    phone: ''
+  });
+
+  // 3. Invoice Metadata
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
@@ -45,7 +56,7 @@ export default function BillForm({
   const [notes, setNotes] = useState('');
   const [freightCharges, setFreightCharges] = useState(0);
 
-  // Tabular Line Items State
+  // 4. Tabular Line Items State
   const [lines, setLines] = useState([
     {
       id: 'line-1',
@@ -122,7 +133,7 @@ export default function BillForm({
     const p = parties.find((item) => item.id === partyId);
     if (p) {
       setShowCustomParty(false);
-      setPartyDetails({
+      const newBillTo = {
         name: p.name,
         gstin: p.gstin || '',
         state: p.state || 'Gujarat',
@@ -130,8 +141,33 @@ export default function BillForm({
         address: p.address || '',
         phone: p.phone || '',
         placeOfSupply: p.state || 'Gujarat'
-      });
+      };
+      setPartyDetails(newBillTo);
+
+      // If Ship To is set to same as Bill To, sync it automatically
+      if (sameAsBillTo) {
+        setShipToDetails({
+          name: newBillTo.name,
+          gstin: newBillTo.gstin,
+          state: newBillTo.state,
+          stateCode: newBillTo.stateCode,
+          address: newBillTo.address,
+          phone: newBillTo.phone
+        });
+      }
     }
+  };
+
+  // Copy Bill To details into Ship To fields
+  const handleCopyBillToToShipTo = () => {
+    setShipToDetails({
+      name: partyDetails.name,
+      gstin: partyDetails.gstin,
+      state: partyDetails.state,
+      stateCode: partyDetails.stateCode,
+      address: partyDetails.address,
+      phone: partyDetails.phone
+    });
   };
 
   // Populate from editingInvoice if present, or set default party/item
@@ -147,6 +183,34 @@ export default function BillForm({
         phone: editingInvoice.phone || '',
         placeOfSupply: editingInvoice.placeOfSupply || 'Gujarat'
       });
+
+      if (editingInvoice.shipTo) {
+        setShipToDetails({
+          name: editingInvoice.shipTo.name || editingInvoice.partyName || '',
+          gstin: editingInvoice.shipTo.gstin || '',
+          state: editingInvoice.shipTo.state || 'Gujarat',
+          stateCode: editingInvoice.shipTo.stateCode || '24',
+          address: editingInvoice.shipTo.address || '',
+          phone: editingInvoice.shipTo.phone || ''
+        });
+
+        // Determine if same as Bill To
+        const isDifferent =
+          (editingInvoice.shipTo.address && editingInvoice.shipTo.address !== editingInvoice.address) ||
+          (editingInvoice.shipTo.name && editingInvoice.shipTo.name !== editingInvoice.partyName);
+        setSameAsBillTo(!isDifferent);
+      } else {
+        setSameAsBillTo(true);
+        setShipToDetails({
+          name: editingInvoice.partyName || '',
+          gstin: editingInvoice.gstin || '',
+          state: editingInvoice.state || 'Gujarat',
+          stateCode: editingInvoice.stateCode || '24',
+          address: editingInvoice.address || '',
+          phone: editingInvoice.phone || ''
+        });
+      }
+
       setInvoiceDate(editingInvoice.date || new Date().toISOString().slice(0, 10));
       setDueDate(editingInvoice.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
       setPaymentMode(editingInvoice.paymentMode || 'Credit 30 Days');
@@ -196,7 +260,7 @@ export default function BillForm({
         hsn: '39232100',
         qty: 100,
         unit: 'KGS',
-        rate: 125,
+        rate: 132.00,
         discountPct: 0,
         gstRate: 18
       }
@@ -273,7 +337,12 @@ export default function BillForm({
     setSuccessNotice(null);
 
     if (!partyDetails.name.trim()) {
-      setErrorMsg('Please select or specify a Customer Name from Tally.');
+      setErrorMsg('Please select or specify a Customer Name for Bill To.');
+      return;
+    }
+
+    if (!sameAsBillTo && !shipToDetails.name.trim()) {
+      setErrorMsg('Please specify Consignee / Delivery Plant Name for Ship To.');
       return;
     }
 
@@ -284,6 +353,24 @@ export default function BillForm({
 
     setSaving(true);
     try {
+      const effectiveShipTo = sameAsBillTo
+        ? {
+            name: partyDetails.name,
+            gstin: partyDetails.gstin,
+            state: partyDetails.state,
+            stateCode: partyDetails.stateCode,
+            address: partyDetails.address,
+            phone: partyDetails.phone
+          }
+        : {
+            name: shipToDetails.name || partyDetails.name,
+            gstin: shipToDetails.gstin || partyDetails.gstin,
+            state: shipToDetails.state || partyDetails.state,
+            stateCode: shipToDetails.stateCode || partyDetails.stateCode,
+            address: shipToDetails.address || partyDetails.address,
+            phone: shipToDetails.phone || partyDetails.phone
+          };
+
       const payload = {
         invoiceNo: isEditing ? editingInvoice.invoiceNo : undefined,
         date: invoiceDate,
@@ -295,8 +382,10 @@ export default function BillForm({
         stateCode: partyDetails.stateCode,
         address: partyDetails.address,
         phone: partyDetails.phone,
-        placeOfSupply: partyDetails.placeOfSupply,
-        destination,
+        placeOfSupply: partyDetails.placeOfSupply || partyDetails.state,
+        sameAsBillTo,
+        shipTo: effectiveShipTo,
+        destination: destination || effectiveShipTo.address || '',
         deliveryNote,
         deliveryNoteDate,
         distance: Number(distance || 85),
@@ -370,7 +459,7 @@ export default function BillForm({
             className="btn-sync-tally-pill"
             onClick={handleSyncFromTally}
             disabled={syncingTally}
-            title="Pulls only Sundry Debtors and Stock Items from active Tally Prime"
+            title="Pulls Sundry Debtors and Stock Items from active Tally Prime"
           >
             {syncingTally ? '⏳ Fetching Tally...' : '⚡ Fetch from Tally'}
           </button>
@@ -423,6 +512,7 @@ export default function BillForm({
           >
             <option value="Credit 30 Days">Credit 30 Days</option>
             <option value="Credit 15 Days">Credit 15 Days</option>
+            <option value="Credit 45 Days">Credit 45 Days</option>
             <option value="Immediate / Cash">Immediate / Cash</option>
             <option value="Advance Payment">Advance Payment</option>
           </select>
@@ -441,45 +531,46 @@ export default function BillForm({
         <div className="meta-field-group">
           <label>Tax Treatment</label>
           <div className="tax-treatment-badge">
-            {isInterstate ? '🌐 Inter-State (IGST 18%)' : '📍 Intra-State (CGST + SGST)'}
+            {isInterstate ? '🌐 Inter-State (IGST 18%)' : '📍 Intra-State (CGST 9% + SGST 9%)'}
           </div>
         </div>
       </div>
 
-      {/* 3. Customer Selection Section (Fetched directly from Tally) */}
-      <div className="customer-selection-card">
-        <div className="card-section-header">
-          <div className="header-title">
-            <span className="section-icon">🏢</span>
-            <h3>Customer / Buyer Details (from Tally Prime)</h3>
-          </div>
-          <div className="header-actions">
+      {/* 3. TWO-COLUMN PARTY SECTION: BILL TO vs SHIP TO */}
+      <div className="billing-party-two-column-grid">
+        {/* LEFT COLUMN: BILL TO (BUYER) */}
+        <div className="party-panel-box bill-to-panel">
+          <div className="party-panel-header">
+            <div className="panel-title-group">
+              <span className="panel-icon">🏢</span>
+              <div>
+                <h3 className="panel-title">BILL TO (BUYER)</h3>
+                <span className="panel-subtitle">Invoiced Party / Accounts Payable</span>
+              </div>
+            </div>
             <button
               type="button"
-              className="btn-text-action"
+              className="btn-toggle-custom-party"
               onClick={() => setShowCustomParty(!showCustomParty)}
             >
-              {showCustomParty ? '← Back to Tally Customer List' : '+ Add New / Custom Party'}
+              {showCustomParty ? '← Tally Masters' : '+ Custom Buyer'}
             </button>
           </div>
-        </div>
 
-        {!showCustomParty ? (
-          <div className="customer-picker-row">
-            <div className="customer-select-wrapper">
-              <div className="picker-header-row">
-                <label className="picker-label">
-                  Select Customer (Sundry Debtors from Tally)
-                  <span className="party-count-chip">{parties.length} in Tally</span>
+          {!showCustomParty ? (
+            <div className="party-select-container">
+              <div className="tally-party-header-row">
+                <label className="field-micro-label">
+                  Select Customer from Tally ({parties.length} available)
                 </label>
                 <button
                   type="button"
                   className="btn-sync-inline-party"
                   onClick={handleSyncFromTally}
                   disabled={syncingTally}
-                  title="Pulls newly created Sundry Debtors from Tally Prime (Port 9000)"
+                  title="Pulls latest customers from Tally Prime"
                 >
-                  {syncingTally ? '⏳ Syncing...' : '⚡ Sync from Tally'}
+                  {syncingTally ? '⏳...' : '⚡ Sync Tally'}
                 </button>
               </div>
 
@@ -489,7 +580,7 @@ export default function BillForm({
                   <input
                     type="text"
                     className="customer-filter-input"
-                    placeholder="Search by customer name, GSTIN, or city..."
+                    placeholder="Search by name, GSTIN, city..."
                     value={partySearch}
                     onChange={(e) => setPartySearch(e.target.value)}
                   />
@@ -498,7 +589,6 @@ export default function BillForm({
                       type="button"
                       className="clear-search-btn"
                       onClick={() => setPartySearch('')}
-                      title="Clear search"
                     >
                       ✕
                     </button>
@@ -519,115 +609,298 @@ export default function BillForm({
                 ))}
               </select>
 
-              {filteredParties.length === 0 && parties.length > 0 && (
-                <p className="no-matches-hint">
-                  No customer matches "{partySearch}". Try clearing your search filter.
-                </p>
-              )}
-
-              {parties.length === 0 && (
-                <div className="no-parties-banner">
-                  <span>No customers found yet. Click <strong>"⚡ Sync from Tally"</strong> to pull all Sundry Debtors from Tally Prime.</span>
+              {/* Verified Bill-To Card */}
+              {partyDetails.name && (
+                <div className="party-info-card">
+                  <div className="party-name-row">
+                    <span className="party-firm-name">{partyDetails.name}</span>
+                    <span className="party-type-chip">Buyer</span>
+                  </div>
+                  <div className="party-fields-compact">
+                    <div className="party-info-line">
+                      <span className="info-tag">GSTIN:</span>
+                      <strong className="info-val">{partyDetails.gstin || 'Unregistered'}</strong>
+                    </div>
+                    <div className="party-info-line">
+                      <span className="info-tag">Address:</span>
+                      <span className="info-val">{partyDetails.address || 'GIDC Industrial Area'}</span>
+                    </div>
+                    <div className="party-info-line">
+                      <span className="info-tag">State:</span>
+                      <span className="info-val">
+                        {partyDetails.state} (Code: {partyDetails.stateCode})
+                      </span>
+                    </div>
+                    {partyDetails.phone && (
+                      <div className="party-info-line">
+                        <span className="info-tag">Phone:</span>
+                        <span className="info-val">{partyDetails.phone}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
+          ) : (
+            <div className="custom-party-form-compact">
+              <div className="compact-form-row">
+                <label>Buyer / Firm Name *</label>
+                <input
+                  type="text"
+                  className="clean-input"
+                  placeholder="e.g. Maruti Granules Pvt. Ltd."
+                  value={partyDetails.name}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setPartyDetails({ ...partyDetails, name });
+                    if (sameAsBillTo) {
+                      setShipToDetails((prev) => ({ ...prev, name }));
+                    }
+                  }}
+                  required
+                />
+              </div>
 
-            {/* Verified Customer Card */}
-            {partyDetails.name && (
-              <div className="customer-verified-card">
-                <div className="verified-header">
-                  <div className="verified-name-group">
-                    <span className="customer-business-name">{partyDetails.name}</span>
-                    <span className="customer-source-pill">Tally Prime · Sundry Debtor</span>
-                  </div>
-                  <span className="badge-gstin-verified">
-                    {partyDetails.gstin ? `GSTIN: ${partyDetails.gstin}` : 'Unregistered Consumer'}
-                  </span>
+              <div className="compact-form-grid-2">
+                <div>
+                  <label>GSTIN Number</label>
+                  <input
+                    type="text"
+                    className="clean-input"
+                    placeholder="24AAFCY1234F1Z5"
+                    maxLength={15}
+                    value={partyDetails.gstin}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      const code = val.length >= 2 ? val.slice(0, 2) : partyDetails.stateCode;
+                      setPartyDetails({
+                        ...partyDetails,
+                        gstin: val,
+                        stateCode: code
+                      });
+                      if (sameAsBillTo) {
+                        setShipToDetails((prev) => ({ ...prev, gstin: val, stateCode: code }));
+                      }
+                    }}
+                  />
                 </div>
-                <div className="verified-details-grid">
-                  <div className="detail-item">
-                    <span className="detail-label">Billing Address:</span>
-                    <span className="detail-value">{partyDetails.address || 'GIDC Industrial Area'}</span>
-                  </div>
-                  <div className="detail-item">
-                    <span className="detail-label">State / Place of Supply:</span>
-                    <span className="detail-value">
-                      {partyDetails.state} (Code: {partyDetails.stateCode})
-                    </span>
-                  </div>
-                  {partyDetails.phone && (
-                    <div className="detail-item">
-                      <span className="detail-label">Contact:</span>
-                      <span className="detail-value">{partyDetails.phone}</span>
-                    </div>
-                  )}
+                <div>
+                  <label>State &amp; Code</label>
+                  <input
+                    type="text"
+                    className="clean-input"
+                    value={partyDetails.state}
+                    onChange={(e) => {
+                      setPartyDetails({
+                        ...partyDetails,
+                        state: e.target.value,
+                        placeOfSupply: e.target.value
+                      });
+                      if (sameAsBillTo) {
+                        setShipToDetails((prev) => ({ ...prev, state: e.target.value }));
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            )}
-          </div>
-        ) : (
-          /* Manual / Custom Party Entry if needed */
-          <div className="custom-party-form-grid">
-            <div className="form-col-group">
-              <label>Customer / Firm Name <span className="req">*</span></label>
-              <input
-                type="text"
-                className="clean-input"
-                placeholder="e.g. Maruti Granules Pvt. Ltd."
-                value={partyDetails.name}
-                onChange={(e) => setPartyDetails({ ...partyDetails, name: e.target.value })}
-                required
-              />
+
+              <div className="compact-form-row">
+                <label>Billing Address</label>
+                <textarea
+                  className="clean-textarea"
+                  rows={2}
+                  placeholder="Office / Billing address"
+                  value={partyDetails.address}
+                  onChange={(e) => {
+                    const address = e.target.value;
+                    setPartyDetails({ ...partyDetails, address });
+                    if (sameAsBillTo) {
+                      setShipToDetails((prev) => ({ ...prev, address }));
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="compact-form-row">
+                <label>Contact Phone</label>
+                <input
+                  type="text"
+                  className="clean-input"
+                  placeholder="+91 98250..."
+                  value={partyDetails.phone}
+                  onChange={(e) => {
+                    const phone = e.target.value;
+                    setPartyDetails({ ...partyDetails, phone });
+                    if (sameAsBillTo) {
+                      setShipToDetails((prev) => ({ ...prev, phone }));
+                    }
+                  }}
+                />
+              </div>
             </div>
-            <div className="form-col-group">
-              <label>GSTIN Number</label>
+          )}
+        </div>
+
+        {/* RIGHT COLUMN: SHIP TO (CONSIGNEE / DELIVERY) */}
+        <div className={`party-panel-box ship-to-panel ${sameAsBillTo ? 'is-same-party' : 'is-different-party'}`}>
+          <div className="party-panel-header">
+            <div className="panel-title-group">
+              <span className="panel-icon">🚚</span>
+              <div>
+                <h3 className="panel-title">SHIP TO (CONSIGNEE)</h3>
+                <span className="panel-subtitle">Delivery Address / Factory / Site</span>
+              </div>
+            </div>
+
+            {/* Checkbox toggle: Same as Bill to */}
+            <label className="same-as-toggle-label">
               <input
-                type="text"
-                className="clean-input"
-                placeholder="24AAFCY1234F1Z5"
-                maxLength={15}
-                value={partyDetails.gstin}
+                type="checkbox"
+                className="same-as-checkbox"
+                checked={sameAsBillTo}
                 onChange={(e) => {
-                  const val = e.target.value.toUpperCase();
-                  setPartyDetails({
-                    ...partyDetails,
-                    gstin: val,
-                    stateCode: val.length >= 2 ? val.slice(0, 2) : partyDetails.stateCode
-                  });
+                  const checked = e.target.checked;
+                  setSameAsBillTo(checked);
+                  if (checked) {
+                    setShipToDetails({
+                      name: partyDetails.name,
+                      gstin: partyDetails.gstin,
+                      state: partyDetails.state,
+                      stateCode: partyDetails.stateCode,
+                      address: partyDetails.address,
+                      phone: partyDetails.phone
+                    });
+                  }
                 }}
               />
-            </div>
-            <div className="form-col-group full-width">
-              <label>Billing &amp; Delivery Address</label>
-              <input
-                type="text"
-                className="clean-input"
-                placeholder="Plot / Shed No, GIDC Estate, City"
-                value={partyDetails.address}
-                onChange={(e) => setPartyDetails({ ...partyDetails, address: e.target.value })}
-              />
-            </div>
-            <div className="form-col-group">
-              <label>State / Region</label>
-              <input
-                type="text"
-                className="clean-input"
-                value={partyDetails.state}
-                onChange={(e) => setPartyDetails({ ...partyDetails, state: e.target.value, placeOfSupply: e.target.value })}
-              />
-            </div>
-            <div className="form-col-group">
-              <label>Phone / Mobile</label>
-              <input
-                type="text"
-                className="clean-input"
-                placeholder="+91 98250..."
-                value={partyDetails.phone}
-                onChange={(e) => setPartyDetails({ ...partyDetails, phone: e.target.value })}
-              />
-            </div>
+              <span className="toggle-text">Same as Bill To</span>
+            </label>
           </div>
-        )}
+
+          {sameAsBillTo ? (
+            /* When Ship To is same as Bill To */
+            <div className="ship-to-same-container">
+              <div className="same-address-badge">
+                <span className="badge-icon">✓</span>
+                <span>Delivery destination matches Buyer's Billing Address</span>
+              </div>
+
+              <div className="party-info-card readonly-preview">
+                <div className="party-name-row">
+                  <span className="party-firm-name">{partyDetails.name || 'Same as Buyer'}</span>
+                  <span className="consignee-sync-chip">Auto-Synced</span>
+                </div>
+                <div className="party-fields-compact">
+                  <div className="party-info-line">
+                    <span className="info-tag">Delivery Site:</span>
+                    <span className="info-val">{partyDetails.address || 'Same as registered buyer address'}</span>
+                  </div>
+                  <div className="party-info-line">
+                    <span className="info-tag">Destination State:</span>
+                    <span className="info-val">{partyDetails.state} (Code: {partyDetails.stateCode})</span>
+                  </div>
+                  <div className="party-info-line">
+                    <span className="info-tag">Consignee GSTIN:</span>
+                    <span className="info-val">{partyDetails.gstin || 'Same as Buyer'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="btn-specify-different-shipto"
+                onClick={() => {
+                  setSameAsBillTo(false);
+                  handleCopyBillToToShipTo();
+                }}
+              >
+                ✏️ Deliver to Different Factory / Site / Plant
+              </button>
+            </div>
+          ) : (
+            /* When Ship To is DIFFERENT from Bill To */
+            <div className="ship-to-custom-container">
+              <div className="ship-to-action-row">
+                <span className="custom-shipto-notice">⚡ Different Delivery Location Active</span>
+                <button
+                  type="button"
+                  className="btn-copy-billto-sm"
+                  onClick={handleCopyBillToToShipTo}
+                  title="Copy details from Bill To to edit easily"
+                >
+                  📋 Copy from Bill To
+                </button>
+              </div>
+
+              <div className="custom-party-form-compact">
+                <div className="compact-form-row">
+                  <label>Consignee / Plant / Factory Name *</label>
+                  <input
+                    type="text"
+                    className="clean-input"
+                    placeholder="e.g. Maruti Granules (Unit-2 Plant) / Site Office"
+                    value={shipToDetails.name}
+                    onChange={(e) => setShipToDetails({ ...shipToDetails, name: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="compact-form-grid-2">
+                  <div>
+                    <label>Consignee GSTIN (Optional)</label>
+                    <input
+                      type="text"
+                      className="clean-input"
+                      placeholder="Leave blank if same as buyer"
+                      maxLength={15}
+                      value={shipToDetails.gstin}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setShipToDetails({
+                          ...shipToDetails,
+                          gstin: val,
+                          stateCode: val.length >= 2 ? val.slice(0, 2) : shipToDetails.stateCode
+                        });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <label>Delivery State &amp; Code</label>
+                    <input
+                      type="text"
+                      className="clean-input"
+                      value={shipToDetails.state}
+                      onChange={(e) => setShipToDetails({ ...shipToDetails, state: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="compact-form-row">
+                  <label>Factory / Unloading Site Address *</label>
+                  <textarea
+                    className="clean-textarea"
+                    rows={2}
+                    placeholder="Plot / Shed No, GIDC Estate / Warehouse Address"
+                    value={shipToDetails.address}
+                    onChange={(e) => setShipToDetails({ ...shipToDetails, address: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <div className="compact-form-row">
+                  <label>Site Contact / Person Phone</label>
+                  <input
+                    type="text"
+                    className="clean-input"
+                    placeholder="Supervisor or receiver phone"
+                    value={shipToDetails.phone}
+                    onChange={(e) => setShipToDetails({ ...shipToDetails, phone: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 4. Products Table (Tabular Data Grid - 1 Row Per Item) */}
@@ -646,33 +919,34 @@ export default function BillForm({
           <table className="items-data-table">
             <thead>
               <tr>
-                <th style={{ width: '40px' }}>#</th>
+                <th style={{ width: '38px', textAlign: 'center' }}>#</th>
                 <th style={{ width: '34%' }}>Product Description / Item</th>
-                <th style={{ width: '12%' }}>HSN Code</th>
-                <th style={{ width: '10%' }}>Qty</th>
-                <th style={{ width: '10%' }}>Unit</th>
-                <th style={{ width: '12%' }}>Rate (₹)</th>
-                <th style={{ width: '8%' }}>Disc %</th>
-                <th style={{ width: '12%' }}>Taxable (₹)</th>
-                <th style={{ width: '10%' }}>GST</th>
-                <th style={{ width: '14%' }}>Total (₹)</th>
-                <th style={{ width: '40px' }}></th>
+                <th style={{ width: '100px' }}>HSN/SAC</th>
+                <th style={{ width: '100px', textAlign: 'right' }}>Qty</th>
+                <th style={{ width: '80px' }}>Unit</th>
+                <th style={{ width: '110px', textAlign: 'right' }}>Rate (₹)</th>
+                <th style={{ width: '80px', textAlign: 'right' }}>Disc %</th>
+                <th style={{ width: '115px', textAlign: 'right' }}>Taxable (₹)</th>
+                <th style={{ width: '90px' }}>GST Rate</th>
+                <th style={{ width: '125px', textAlign: 'right' }}>Total (₹)</th>
+                <th style={{ width: '40px', textAlign: 'center' }}></th>
               </tr>
             </thead>
             <tbody>
               {computedLines.map((line, idx) => (
-                <tr key={line.id} className="item-table-row">
+                <tr key={line.id}>
+                  {/* Row Index */}
                   <td className="row-index">{idx + 1}</td>
 
-                  {/* Product Description */}
+                  {/* Product Name */}
                   <td>
                     <input
                       type="text"
-                      list="product-suggestions"
                       className="table-cell-input bold"
-                      placeholder="e.g. HDPE Plain Liner Bags (50 Micron)"
+                      placeholder="e.g. HDPE Plain Liner Bags"
                       value={line.name}
                       onChange={(e) => updateLine(idx, 'name', e.target.value)}
+                      list="product-suggestions"
                       required
                     />
                   </td>
@@ -681,7 +955,8 @@ export default function BillForm({
                   <td>
                     <input
                       type="text"
-                      className="table-cell-input"
+                      className="table-cell-input font-mono"
+                      placeholder="39232100"
                       value={line.hsn}
                       onChange={(e) => updateLine(idx, 'hsn', e.target.value)}
                     />
@@ -691,11 +966,13 @@ export default function BillForm({
                   <td>
                     <input
                       type="number"
-                      min="1"
                       step="any"
+                      min="0.01"
                       className="table-cell-input bold"
+                      style={{ textAlign: 'right' }}
                       value={line.qty}
-                      onChange={(e) => updateLine(idx, 'qty', e.target.value)}
+                      onChange={(e) => updateLine(idx, 'qty', Number(e.target.value))}
+                      required
                     />
                   </td>
 
@@ -710,8 +987,8 @@ export default function BillForm({
                       <option value="PCS">PCS</option>
                       <option value="ROLLS">ROLLS</option>
                       <option value="BAGS">BAGS</option>
-                      <option value="BOX">BOX</option>
-                      <option value="MT">MT</option>
+                      <option value="MTR">MTR</option>
+                      <option value="NOS">NOS</option>
                     </select>
                   </td>
 
@@ -720,31 +997,35 @@ export default function BillForm({
                     <input
                       type="number"
                       step="0.01"
-                      className="table-cell-input font-mono"
+                      min="0"
+                      className="table-cell-input"
+                      style={{ textAlign: 'right' }}
                       value={line.rate}
-                      onChange={(e) => updateLine(idx, 'rate', e.target.value)}
+                      onChange={(e) => updateLine(idx, 'rate', Number(e.target.value))}
+                      required
                     />
                   </td>
 
-                  {/* Disc % */}
+                  {/* Discount % */}
                   <td>
                     <input
                       type="number"
+                      step="0.1"
                       min="0"
                       max="100"
-                      step="0.5"
                       className="table-cell-input"
+                      style={{ textAlign: 'right' }}
                       value={line.discountPct}
-                      onChange={(e) => updateLine(idx, 'discountPct', e.target.value)}
+                      onChange={(e) => updateLine(idx, 'discountPct', Number(e.target.value))}
                     />
                   </td>
 
-                  {/* Taxable Amt */}
+                  {/* Taxable Amount */}
                   <td className="table-cell-numeric">
                     {formatINR(line.taxable)}
                   </td>
 
-                  {/* GST % */}
+                  {/* GST Rate */}
                   <td>
                     <select
                       className="table-cell-select"
@@ -765,7 +1046,7 @@ export default function BillForm({
                   </td>
 
                   {/* Delete Row */}
-                  <td>
+                  <td style={{ textAlign: 'center' }}>
                     {lines.length > 1 && (
                       <button
                         type="button"
@@ -806,7 +1087,7 @@ export default function BillForm({
         <div className="card-section-header">
           <div className="header-title">
             <span className="section-icon">🚚</span>
-            <h3>Transport &amp; Vehicle Details (Optional)</h3>
+            <h3>Transport &amp; Dispatch Details</h3>
           </div>
         </div>
 
@@ -827,7 +1108,7 @@ export default function BillForm({
             <input
               type="text"
               className="clean-input"
-              placeholder="e.g. VRL Logistics"
+              placeholder="e.g. VRL Logistics / Patel Freight"
               value={transporter}
               onChange={(e) => setTransporter(e.target.value)}
             />
@@ -841,6 +1122,17 @@ export default function BillForm({
               placeholder="e.g. DN-186"
               value={deliveryNote}
               onChange={(e) => setDeliveryNote(e.target.value)}
+            />
+          </div>
+
+          <div className="dispatch-col">
+            <label>Destination City / Site</label>
+            <input
+              type="text"
+              className="clean-input"
+              placeholder="e.g. Morbi / Sanand"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
             />
           </div>
         </div>
@@ -886,11 +1178,11 @@ export default function BillForm({
           {!isInterstate ? (
             <>
               <div className="summary-row">
-                <span>Central GST (CGST):</span>
+                <span>Central GST (CGST 9%):</span>
                 <span>{formatINR(totalCgst)}</span>
               </div>
               <div className="summary-row">
-                <span>State GST (SGST):</span>
+                <span>State GST (SGST 9%):</span>
                 <span>{formatINR(totalSgst)}</span>
               </div>
             </>
@@ -922,7 +1214,7 @@ export default function BillForm({
         </div>
       </div>
 
-      {/* 7. Bottom Fixed / Sticky Action Bar */}
+      {/* 7. Bottom Fixed Action Bar */}
       <div className="workbench-bottom-actions">
         <div className="action-hint">
           <span>⚡ Direct push to Tally Prime Sales Day Book</span>

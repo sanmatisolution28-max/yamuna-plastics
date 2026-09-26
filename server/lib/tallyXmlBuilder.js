@@ -73,9 +73,14 @@ export function buildVoucherXml(invoice, settings) {
   const buyerAddressXml = addressLines.length > 0
     ? addressLines.map(line => `              <BASICBUYERADDRESS>${escapeXml(line)}</BASICBUYERADDRESS>`).join('\n')
     : `              <BASICBUYERADDRESS></BASICBUYERADDRESS>`;
-  const consigneeAddressXml = addressLines.length > 0
-    ? addressLines.map(line => `              <CONSIGNEEADDRESS>${escapeXml(line)}</CONSIGNEEADDRESS>`).join('\n')
+  const consigneeAddressLines = splitAddressLines(invoice.shipTo?.address || invoice.address);
+  const consigneeAddressXml = consigneeAddressLines.length > 0
+    ? consigneeAddressLines.map(line => `              <CONSIGNEEADDRESS>${escapeXml(line)}</CONSIGNEEADDRESS>`).join('\n')
     : `              <CONSIGNEEADDRESS></CONSIGNEEADDRESS>`;
+
+  const consigneeName = invoice.shipTo?.name || invoice.partyName;
+  const consigneeGstin = invoice.shipTo?.gstin !== undefined ? invoice.shipTo.gstin : (invoice.gstin || '');
+  const consigneeState = invoice.shipTo?.state || invoice.state || 'Gujarat';
 
   let xml = `
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
@@ -93,9 +98,9 @@ export function buildVoucherXml(invoice, settings) {
             <PLACEOFSUPPLY>${escapeXml(invoice.placeOfSupply || invoice.state || 'Gujarat')}</PLACEOFSUPPLY>
             <PARTYGSTIN>${escapeXml(invoice.gstin || '')}</PARTYGSTIN>
             <PARTYMAILINGNAME>${escapeXml(invoice.partyName)}</PARTYMAILINGNAME>
-            <CONSIGNEEMAILINGNAME>${escapeXml(invoice.partyName)}</CONSIGNEEMAILINGNAME>
-            <CONSIGNEESTATENAME>${escapeXml(invoice.state || 'Gujarat')}</CONSIGNEESTATENAME>
-            <CONSIGNEEGSTIN>${escapeXml(invoice.gstin || '')}</CONSIGNEEGSTIN>
+            <CONSIGNEEMAILINGNAME>${escapeXml(consigneeName)}</CONSIGNEEMAILINGNAME>
+            <CONSIGNEESTATENAME>${escapeXml(consigneeState)}</CONSIGNEESTATENAME>
+            <CONSIGNEEGSTIN>${escapeXml(consigneeGstin)}</CONSIGNEEGSTIN>
             <ADDRESS.LIST>
 ${addressXml}
             </ADDRESS.LIST>
