@@ -2885,8 +2885,9 @@ button, input, select, textarea {
 .billing-party-two-column-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
+  gap: 18px;
+  margin-bottom: 18px;
+  align-items: stretch;
 }
 
 @media (max-width: 960px) {
@@ -2963,7 +2964,7 @@ button, input, select, textarea {
   color: #2563eb;
   font-size: 11px;
   font-weight: 700;
-  padding: 4px 10px;
+  padding: 5px 12px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -2973,60 +2974,46 @@ button, input, select, textarea {
   background: #e2e8f0;
 }
 
-.same-as-toggle-label {
+/* Ship To Segmented Switch */
+.shipto-segmented-switch {
   display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  background: #ecfdf5;
-  border: 1.5px solid #a7f3d0;
-  padding: 4px 11px;
+  background: #f1f5f9;
+  border: 1.5px solid #cbd5e1;
+  padding: 3px;
   border-radius: 9999px;
-  transition: all 0.2s ease;
-  user-select: none;
+  gap: 3px;
 }
 
-.same-as-toggle-label:hover {
-  background: #dcfce7;
-}
-
-.same-as-checkbox {
-  cursor: pointer;
-  accent-color: #059669;
-  width: 15px;
-  height: 15px;
-}
-
-.toggle-text {
+.switch-segment {
+  background: transparent;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 9999px;
   font-size: 11.5px;
-  font-weight: 800;
-  color: #065f46;
-}
-
-.field-micro-label {
-  font-size: 11px;
   font-weight: 700;
   color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.tally-party-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 6px;
+.switch-segment.active {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+.switch-segment.active.different {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
 }
 
 .party-info-card {
   background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid #e2e8f0;
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   margin-top: 10px;
-}
-
-.party-info-card.readonly-preview {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
 }
 
 .party-name-row {
@@ -3054,33 +3041,24 @@ button, input, select, textarea {
   text-transform: uppercase;
 }
 
-.consignee-sync-chip {
-  background: #dcfce7;
-  color: #15803d;
-  font-size: 10.5px;
-  font-weight: 800;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
 .party-fields-compact {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 11.5px;
+  gap: 5px;
+  font-size: 12px;
 }
 
 .party-info-line {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 8px;
 }
 
 .info-tag {
   color: #64748b;
   font-weight: 700;
-  min-width: 70px;
-  font-size: 11px;
+  min-width: 65px;
+  font-size: 11.5px;
 }
 
 .info-val {
@@ -3098,21 +3076,21 @@ button, input, select, textarea {
 .same-address-badge {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   background: #ecfdf5;
-  border: 1px solid #a7f3d0;
+  border: 1.5px solid #a7f3d0;
   color: #047857;
   font-size: 12px;
   font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border-radius: 10px;
 }
 
 .badge-icon {
   background: #059669;
   color: white;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -3122,23 +3100,33 @@ button, input, select, textarea {
   flex-shrink: 0;
 }
 
-.btn-specify-different-shipto {
-  background: white;
-  border: 1.5px dashed #10b981;
-  color: #047857;
-  font-size: 12px;
-  font-weight: 800;
-  padding: 8px 14px;
+.delivery-destination-note {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 10px 14px;
   border-radius: 8px;
-  cursor: pointer;
-  text-align: center;
+  font-size: 11.5px;
+  color: #334155;
   margin-top: 4px;
-  transition: all 0.2s;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.btn-specify-different-shipto:hover {
-  background: #ecfdf5;
-  border-color: #059669;
+.btn-link-action {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.btn-link-action:hover {
+  color: #1d4ed8;
 }
 
 .ship-to-action-row {
@@ -3166,7 +3154,7 @@ button, input, select, textarea {
   color: #334155;
   font-size: 11px;
   font-weight: 700;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
@@ -3179,32 +3167,36 @@ button, input, select, textarea {
 .custom-party-form-compact {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 10px;
+  margin-top: 6px;
 }
 
 .compact-form-row {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 }
 
 .compact-form-row label {
   font-size: 11px;
   font-weight: 700;
   color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 .compact-form-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 12px;
 }
 
 .compact-form-grid-2 label {
   font-size: 11px;
   font-weight: 700;
   color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
 /* ==========================================================================
