@@ -953,15 +953,73 @@ export default function BillForm({
                 <tr key={line.id}>
                   <td className="row-index">{idx + 1}</td>
                   <td>
-                    <input
-                      type="text"
-                      className="table-cell-input bold"
-                      placeholder="e.g. HDPE Plain Liner Bags"
-                      value={line.name}
-                      onChange={(e) => updateLine(idx, 'name', e.target.value)}
-                      list="product-suggestions"
-                      required
-                    />
+                    {items && items.length > 0 && !line.isCustomItem ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <select
+                          className="table-cell-select bold"
+                          style={{
+                            width: '100%',
+                            minWidth: '240px',
+                            padding: '7px 10px',
+                            fontWeight: 700,
+                            fontSize: '13px',
+                            background: '#ffffff',
+                            border: '1.5px solid #0284c7',
+                            borderRadius: '6px',
+                            color: '#0f172a',
+                            cursor: 'pointer'
+                          }}
+                          value={line.name || ''}
+                          onChange={(e) => {
+                            if (e.target.value === '__custom__') {
+                              updateLine(idx, 'isCustomItem', true);
+                              updateLine(idx, 'name', '');
+                            } else {
+                              updateLine(idx, 'name', e.target.value);
+                            }
+                          }}
+                          required
+                        >
+                          <option value="">-- Click to Select Product ({items.length} from Tally) --</option>
+                          {items.map((it) => (
+                            <option key={it.id || it.name} value={it.name}>
+                              {it.name} — ₹{it.baseRate || it.rate || 0}/{it.unit || 'KGS'}
+                            </option>
+                          ))}
+                          <option value="__custom__">✏️ + Custom / Type Manually...</option>
+                        </select>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="table-cell-input bold"
+                          placeholder="e.g. HDPE Plain Liner Bags"
+                          value={line.name}
+                          onChange={(e) => updateLine(idx, 'name', e.target.value)}
+                          required
+                          style={{ flex: 1 }}
+                        />
+                        {items && items.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => updateLine(idx, 'isCustomItem', false)}
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: '11px',
+                              borderRadius: '4px',
+                              border: '1px solid #cbd5e1',
+                              background: '#f8fafc',
+                              cursor: 'pointer',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Switch back to Tally product dropdown"
+                          >
+                            📋 Tally List
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                   <td>
                     <input
