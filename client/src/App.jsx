@@ -6,7 +6,7 @@ import PartyMaster from './components/PartyMaster';
 import ItemCatalog from './components/ItemCatalog';
 import InvoiceModal from './components/InvoiceModal';
 import LoginModal from './components/LoginModal';
-import ProfileModal from './components/ProfileModal';
+import ProfilePage from './components/ProfilePage';
 import { api } from './utils/api';
 import { formatINR } from './utils/numberToWords';
 
@@ -20,8 +20,8 @@ export default function App() {
       return null;
     }
   });
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('new-bill'); // new-bill | invoices | tally | parties | items
+
+  const [activeTab, setActiveTab] = useState('new-bill'); // new-bill | invoices | tally | parties | items | profile
   const [invoices, setInvoices] = useState([]);
   const [parties, setParties] = useState([]);
   const [items, setItems] = useState([]);
@@ -111,10 +111,11 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('yp_auth_token');
-    localStorage.removeItem('yp_user');
-    setCurrentUser(null);
-    setShowProfileModal(false);
+    if (window.confirm('Are you sure you want to sign out of Yamuna Plastics Portal?')) {
+      localStorage.removeItem('yp_auth_token');
+      localStorage.removeItem('yp_user');
+      setCurrentUser(null);
+    }
   };
 
   // If not logged in, show secure login page
@@ -135,26 +136,31 @@ export default function App() {
       <header className="app-navbar">
         <div className="navbar-inner">
           {/* Brand Logo & Title */}
-          <div className="brand-section">
+          <div
+            className="brand-section"
+            onClick={() => setActiveTab('invoices')}
+            style={{ cursor: 'pointer' }}
+            title="Yamuna Plastics Portal Home"
+          >
             <div className="brand-logo-icon">🏭</div>
             <div className="brand-text">
               <h1>
                 Yamuna Plastics
-                <span className="version-tag">Enterprise v2.0</span>
+                <span className="version-tag">Cloud Portal</span>
               </h1>
-              <p>Mobile Billing &amp; Tally Prime Integration Engine</p>
+              <p>Mobile Billing &amp; Tally Prime Integration</p>
             </div>
           </div>
 
-          {/* System Connectivity & Status Pills */}
+          {/* Center Connectivity & Quick Info */}
           <div className="system-status-group">
-            <div className="status-pill" title="Tally Prime HTTP Server Status on Port 9000">
+            <div
+              className={`status-pill ${tallyOnline ? 'online' : 'standby'}`}
+              onClick={() => setActiveTab('tally')}
+              title={tallyOnline ? `Connected to ${activeCompany} on Port 9000` : 'Tally on Standby (Port 9000)'}
+            >
               <span className={`status-indicator-dot ${tallyOnline ? '' : 'offline'}`}></span>
-              <span>{tallyOnline ? `Tally Prime: ${activeCompany}` : 'Tally Standby (Port 9000)'}</span>
-            </div>
-
-            <div className="status-pill" title="e-Way Bill Auto-Generation Mode">
-              <span>🚚 EWB: Option 1 (Auto)</span>
+              <span>{tallyOnline ? `Tally: ${activeCompany}` : 'Tally Standby (Port 9000)'}</span>
             </div>
 
             {pendingCount > 0 && (
@@ -163,26 +169,27 @@ export default function App() {
                 onClick={() => setActiveTab('tally')}
                 title="Click to view and sync pending bills with Tally"
               >
-                <span>⚡ {pendingCount} Pending Tally Sync</span>
+                <span>⚡ {pendingCount} Pending Sync</span>
               </div>
             )}
           </div>
 
-          {/* Navbar Quick Action Buttons */}
+          {/* Right Action Controls */}
           <div className="navbar-actions">
             <button
               type="button"
               className="btn-nav-secondary"
               onClick={loadData}
               disabled={refreshing}
-              title="Refresh all invoices and Tally connection"
+              title="Refresh all data"
             >
-              {refreshing ? '⏳ Refreshing...' : '🔄 Refresh'}
+              {refreshing ? '⏳' : '🔄'}
+              <span className="btn-label-desktop">Refresh</span>
             </button>
 
             <button
               type="button"
-              className="btn-nav-primary"
+              className={`btn-nav-primary ${activeTab === 'new-bill' ? 'active-pulse' : ''}`}
               onClick={() => {
                 setEditingInvoice(null);
                 setActiveTab('new-bill');
@@ -191,69 +198,23 @@ export default function App() {
               <span>+ Create Bill</span>
             </button>
 
-            {/* Profile & Security (Password Update) */}
+            {/* Dedicated Profile & Account Button */}
             <div
-              className="user-profile-badge"
-              onClick={() => setShowProfileModal(true)}
-              title="Click to view profile & change password"
+              className={`user-profile-badge ${activeTab === 'profile' ? 'active' : ''}`}
+              onClick={() => setActiveTab('profile')}
+              title="Open Profile, Password & Settings Page"
             >
               <span className="user-avatar">👤</span>
               <div className="user-info-text">
                 <span className="user-name">{currentUser?.name || currentUser?.username || 'Admin'}</span>
-                <span className="user-role">{currentUser?.role || 'Admin'}</span>
+                <span className="user-role">{currentUser?.role || 'Super Admin'}</span>
               </div>
-              <span className="user-dropdown-arrow">⚙️</span>
             </div>
           </div>
         </div>
       </header>
 
-      {/* 2. KPI Metrics Ribbon (Interactive Dashboard Strip) */}
-      <section className="kpi-banner">
-        <div className="kpi-inner">
-          <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
-            <div className="kpi-icon-wrap blue">📋</div>
-            <div className="kpi-content">
-              <span className="kpi-label">Total Invoices</span>
-              <span className="kpi-value">{totalBillsCount} Bills</span>
-              <span className="kpi-sub">All sales vouchers recorded</span>
-            </div>
-          </div>
-
-          <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
-            <div className="kpi-icon-wrap green">💰</div>
-            <div className="kpi-content">
-              <span className="kpi-label">Total Billed Revenue</span>
-              <span className="kpi-value">{formatINR(totalRevenue)}</span>
-              <span className="kpi-sub">Inclusive of CGST / SGST</span>
-            </div>
-          </div>
-
-          <div className="kpi-card" onClick={() => setActiveTab('tally')}>
-            <div className={`kpi-icon-wrap ${pendingCount > 0 ? 'amber' : 'green'}`}>🔌</div>
-            <div className="kpi-content">
-              <span className="kpi-label">Tally Sync Status</span>
-              <span className="kpi-value">
-                {syncedCount} / {totalBillsCount} Synced
-              </span>
-              <span className="kpi-sub">
-                {pendingCount > 0 ? `${pendingCount} pending Day Book push` : '100% Up to date in Tally'}
-              </span>
-            </div>
-          </div>
-
-          <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
-            <div className="kpi-icon-wrap purple">🚚</div>
-            <div className="kpi-content">
-              <span className="kpi-label">e-Way Bills</span>
-              <span className="kpi-value">{ewbCount} Generated</span>
-              <span className="kpi-sub">Option 1: 100% Auto-Compliant</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. Modern Segmented Tab Navigation */}
+      {/* 2. Modern Segmented Tab Navigation Bar */}
       <nav className="tabs-container">
         <div className="tabs-inner">
           <button
@@ -264,8 +225,8 @@ export default function App() {
               setActiveTab('new-bill');
             }}
           >
-            <span>📝</span>
-            <span>{editingInvoice ? 'Edit Bill' : 'Create New Bill'}</span>
+            <span className="tab-icon">📝</span>
+            <span className="tab-text">{editingInvoice ? 'Edit Bill' : 'Create New Bill'}</span>
           </button>
 
           <button
@@ -273,8 +234,8 @@ export default function App() {
             className={`tab-button ${activeTab === 'invoices' ? 'active' : ''}`}
             onClick={() => setActiveTab('invoices')}
           >
-            <span>📋</span>
-            <span>Bills &amp; Invoices</span>
+            <span className="tab-icon">📋</span>
+            <span className="tab-text">Bills &amp; Invoices</span>
             <span className="tab-badge">{invoices.length}</span>
           </button>
 
@@ -283,8 +244,8 @@ export default function App() {
             className={`tab-button ${activeTab === 'tally' ? 'active' : ''}`}
             onClick={() => setActiveTab('tally')}
           >
-            <span>🔌</span>
-            <span>Tally Prime Sync</span>
+            <span className="tab-icon">🔌</span>
+            <span className="tab-text">Tally Prime Sync</span>
             {pendingCount > 0 && <span className="tab-badge warning">{pendingCount}</span>}
           </button>
 
@@ -293,8 +254,8 @@ export default function App() {
             className={`tab-button ${activeTab === 'parties' ? 'active' : ''}`}
             onClick={() => setActiveTab('parties')}
           >
-            <span>👥</span>
-            <span>Customers &amp; Parties</span>
+            <span className="tab-icon">👥</span>
+            <span className="tab-text">Customers</span>
             <span className="tab-badge">{parties.length}</span>
           </button>
 
@@ -303,22 +264,76 @@ export default function App() {
             className={`tab-button ${activeTab === 'items' ? 'active' : ''}`}
             onClick={() => setActiveTab('items')}
           >
-            <span>📦</span>
-            <span>Stock Catalog</span>
+            <span className="tab-icon">📦</span>
+            <span className="tab-text">Stock Items</span>
             <span className="tab-badge">{items.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
+            onClick={() => setActiveTab('profile')}
+          >
+            <span className="tab-icon">👤</span>
+            <span className="tab-text">Profile &amp; Settings</span>
           </button>
         </div>
       </nav>
 
-      {/* 4. Main Workspace */}
+      {/* 3. KPI Metrics Dashboard Strip (Shown on Invoices and Tally views for clean elegance) */}
+      {(activeTab === 'invoices' || activeTab === 'tally') && (
+        <section className="kpi-banner">
+          <div className="kpi-inner">
+            <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
+              <div className="kpi-icon-wrap blue">📋</div>
+              <div className="kpi-content">
+                <span className="kpi-label">Total Invoices</span>
+                <span className="kpi-value">{totalBillsCount} Bills</span>
+                <span className="kpi-sub">All sales vouchers recorded</span>
+              </div>
+            </div>
+
+            <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
+              <div className="kpi-icon-wrap green">💰</div>
+              <div className="kpi-content">
+                <span className="kpi-label">Total Revenue</span>
+                <span className="kpi-value">{formatINR(totalRevenue)}</span>
+                <span className="kpi-sub">Inclusive of CGST / SGST</span>
+              </div>
+            </div>
+
+            <div className="kpi-card" onClick={() => setActiveTab('tally')}>
+              <div className={`kpi-icon-wrap ${pendingCount > 0 ? 'amber' : 'green'}`}>🔌</div>
+              <div className="kpi-content">
+                <span className="kpi-label">Tally Sync Status</span>
+                <span className="kpi-value">
+                  {syncedCount} / {totalBillsCount} Synced
+                </span>
+                <span className="kpi-sub">
+                  {pendingCount > 0 ? `${pendingCount} pending Day Book push` : '100% Up to date in Tally'}
+                </span>
+              </div>
+            </div>
+
+            <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
+              <div className="kpi-icon-wrap purple">🚚</div>
+              <div className="kpi-content">
+                <span className="kpi-label">e-Way Bills</span>
+                <span className="kpi-value">{ewbCount} Generated</span>
+                <span className="kpi-sub">Option 1: 100% Auto-Compliant</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* 4. Main Page Workspace */}
       <main className="app-workspace">
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '80px 20px', color: '#64748b' }}>
-            <div style={{ fontSize: '36px', marginBottom: '12px' }}>⏳</div>
-            <div style={{ fontSize: '16px', fontWeight: 800, color: '#1e293b' }}>
-              Loading Yamuna Plastics Enterprise Data...
-            </div>
-            <div style={{ fontSize: '13px', marginTop: '4px' }}>Connecting to local API and Tally Prime...</div>
+          <div className="loading-state-card">
+            <div className="loading-spinner">⏳</div>
+            <h3>Loading Yamuna Plastics Enterprise Data...</h3>
+            <p>Connecting to local database and Tally Prime engine...</p>
           </div>
         ) : (
           <>
@@ -366,26 +381,27 @@ export default function App() {
                 onRefresh={loadData}
               />
             )}
+
+            {/* Dedicated Profile & Security Page */}
+            {activeTab === 'profile' && (
+              <ProfilePage
+                user={currentUser}
+                onLogout={handleLogout}
+                settings={settings}
+                onSettingsUpdated={(newCfg) => setSettings(newCfg)}
+              />
+            )}
           </>
         )}
       </main>
 
-      {/* 5. 1:1 Pixel-Perfect Tax Invoice Modal (Replicating 186 instaplast.pdf) */}
+      {/* 5. 1:1 Pixel-Perfect Tax Invoice Modal */}
       {viewingInvoice && (
         <InvoiceModal
           invoice={viewingInvoice}
           settings={settings}
           onClose={() => setViewingInvoice(null)}
           onSynced={handleInvoiceSynced}
-        />
-      )}
-
-      {/* 6. User Profile & Password Change Modal */}
-      {showProfileModal && (
-        <ProfileModal
-          user={currentUser}
-          onClose={() => setShowProfileModal(false)}
-          onLogout={handleLogout}
         />
       )}
     </div>
