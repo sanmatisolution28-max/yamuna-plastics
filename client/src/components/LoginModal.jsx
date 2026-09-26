@@ -34,7 +34,7 @@ export default function LoginModal({ onLoginSuccess }) {
   return (
     <div className="login-page-screen">
       <div className="login-backdrop-glow"></div>
-      
+
       <div className="login-card-container">
         {/* Brand Header */}
         <div className="login-card-header">
@@ -118,7 +118,7 @@ export default function LoginModal({ onLoginSuccess }) {
 
         <div className="login-card-footer">
           <div className="footer-copyright">
-            Yamuna Plastics Pvt. Ltd. · Factory &amp; Works GIDC Jamnagar
+            Yamuna Plastics Pvt. Ltd.
           </div>
           <div className="footer-secured-by">
             Zero-Click Tally Prime Sync &amp; Option 1 Auto e-Way Bill
