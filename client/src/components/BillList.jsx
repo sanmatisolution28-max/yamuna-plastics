@@ -2,13 +2,12 @@ import React, { useState } from 'react';
 import { formatINR } from '../utils/numberToWords';
 import { api } from '../utils/api';
 
-export default function BillList({ invoices, onViewInvoice, onEditInvoice, onRefreshInvoices }) {
+export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, onRefreshInvoices }) {
   const [filter, setFilter] = useState('all'); // all | pending | synced
   const [search, setSearch] = useState('');
   const [syncingId, setSyncingId] = useState(null);
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [feedback, setFeedback] = useState(null);
-  const [fetchingEwbId, setFetchingEwbId] = useState(null);
 
   // Filter list
   const filtered = invoices.filter((inv) => {
@@ -18,38 +17,16 @@ export default function BillList({ invoices, onViewInvoice, onEditInvoice, onRef
 
     if (search.trim()) {
       const q = search.toLowerCase();
-      const matchNo = inv.invoiceNo.toLowerCase().includes(q);
-      const matchParty = inv.partyName.toLowerCase().includes(q);
+      const matchNo = (inv.invoiceNo || '').toLowerCase().includes(q);
+      const matchParty = (inv.partyName || '').toLowerCase().includes(q);
       const matchGst = (inv.gstin || '').toLowerCase().includes(q);
-      const matchEwb = (inv.ewayBill?.ewayBillNo || '').toLowerCase().includes(q);
-      return matchNo || matchParty || matchGst || matchEwb;
+      return matchNo || matchParty || matchGst;
     }
     return true;
   });
 
   const pendingCount = invoices.filter((i) => !i.tallySync?.synced).length;
   const syncedCount = invoices.filter((i) => i.tallySync?.synced).length;
-
-  const handleFetchEwb = async (inv) => {
-    setFetchingEwbId(inv.id);
-    setFeedback(null);
-    try {
-      const res = await api.fetchEwayBill(inv.id);
-      if (res.success && res.ewayBill) {
-        setFeedback({
-          type: 'success',
-          text: `🚚 e-Way Bill #${res.ewayBill.ewayBillNo} retrieved & saved for Bill #${inv.invoiceNo}!`
-        });
-        if (onRefreshInvoices) onRefreshInvoices();
-      } else {
-        setFeedback({ type: 'error', text: `⚠️ ${res.error || res.message}` });
-      }
-    } catch (err) {
-      setFeedback({ type: 'error', text: `Failed to fetch e-Way bill: ${err.message}` });
-    } finally {
-      setFetchingEwbId(null);
-    }
-  };
 
   const handleSyncSingle = async (inv) => {
     setSyncingId(inv.id);
@@ -58,16 +35,12 @@ export default function BillList({ invoices, onViewInvoice, onEditInvoice, onRef
       const res = await api.syncInvoiceToTally(inv.id);
       if (res.success) {
         setFeedback({ type: 'success', text: `✅ Bill #${inv.invoiceNo} pushed to Tally Prime Sales Register!` });
-        // Automatically check if Tally generated an e-Way bill
-        try {
-          await api.fetchEwayBill(inv.id);
-        } catch {}
       } else {
         setFeedback({ type: 'error', text: `⚠️ ${res.error || res.message}` });
       }
       if (onRefreshInvoices) onRefreshInvoices();
     } catch (err) {
-      setFeedback({ type: 'error', text: `Tally Connection Failed: ${err.message}` });
+      setFeedback({ type: 'error', text: `Tally connection failed: ${err.message}` });
     } finally {
       setSyncingId(null);
     }
@@ -95,64 +68,64 @@ export default function BillList({ invoices, onViewInvoice, onEditInvoice, onRef
   };
 
   return (
-    <div className="bill-list-container">
+    <div className="bill-list-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 20px 40px' }}>
       {/* Banner / Feedback */}
       {feedback && (
-        <div
-          style={{
-            padding: '12px 16px',
-            borderRadius: '12px',
-            marginBottom: '14px',
-            fontSize: '12.5px',
-            fontWeight: 700,
-            background: feedback.type === 'success' ? '#dcfce7' : '#fee2e2',
-            color: feedback.type === 'success' ? '#15803d' : '#b91c1c',
-            border: `1.5px solid ${feedback.type === 'success' ? '#86efac' : '#fca5a5'}`
-          }}
-        >
+        <div className={`workbench-alert ${feedback.type}`} style={{ marginBottom: '14px' }}>
           {feedback.text}
         </div>
       )}
 
-      {/* Top Controls: Search + Filter Chips */}
-      <div className="form-card" style={{ padding: '12px', marginBottom: '14px' }}>
-        <input
-          type="text"
-          className="form-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 Search by Invoice No, Customer, GSTIN..."
-          style={{ marginBottom: '10px' }}
-        />
+      {/* Top Filter & Search Bar */}
+      <div className="directory-filter-bar" style={{ marginBottom: '16px' }}>
+        <div className="search-input-wrap">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="directory-search-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by invoice number, customer name, GSTIN..."
+          />
+          {search && (
+            <button type="button" className="clear-btn" onClick={() => setSearch('')}>
+              ✕
+            </button>
+          )}
+        </div>
 
-        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="shipto-segmented-switch">
             <button
-              className={`btn-sm-action ${filter === 'all' ? 'btn-sm-sync' : ''}`}
+              type="button"
+              className={`switch-segment ${filter === 'all' ? 'active' : ''}`}
               onClick={() => setFilter('all')}
             >
               All ({invoices.length})
             </button>
             <button
-              className={`btn-sm-action ${filter === 'pending' ? 'btn-sm-sync' : ''}`}
+              type="button"
+              className={`switch-segment ${filter === 'pending' ? 'active' : ''}`}
               onClick={() => setFilter('pending')}
             >
-              ⏳ Pending ({pendingCount})
+              Pending ({pendingCount})
             </button>
             <button
-              className={`btn-sm-action ${filter === 'synced' ? 'btn-sm-sync' : ''}`}
+              type="button"
+              className={`switch-segment ${filter === 'synced' ? 'active' : ''}`}
               onClick={() => setFilter('synced')}
             >
-              ✅ Synced ({syncedCount})
+              Synced ({syncedCount})
             </button>
           </div>
 
           {pendingCount > 0 && (
             <button
-              className="btn-sm-action btn-sm-sync"
+              type="button"
+              className="btn-sync-tally-pill"
               disabled={batchSyncing}
               onClick={handleSyncAll}
-              style={{ fontWeight: 800 }}
+              style={{ fontSize: '11.5px', padding: '6px 12px' }}
             >
               {batchSyncing ? 'Syncing...' : `⚡ Sync ${pendingCount} to Tally`}
             </button>
@@ -160,106 +133,118 @@ export default function BillList({ invoices, onViewInvoice, onEditInvoice, onRef
         </div>
       </div>
 
-      {/* Invoices List */}
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-          <div style={{ fontSize: '36px', marginBottom: '8px' }}>📄</div>
-          <div style={{ fontWeight: 800, fontSize: '15px' }}>No bills found</div>
-          <div style={{ fontSize: '12px' }}>Try changing the search query or generate a new bill</div>
-        </div>
-      ) : (
-        filtered.map((inv) => {
-          const isSynced = Boolean(inv.tallySync?.synced);
-          const firstItem = inv.items?.[0]?.name || 'Plastic Products';
-          const itemsExtraCount = (inv.items?.length || 1) - 1;
+      {/* Invoices List - Clean Table */}
+      <div className="directory-table-card">
+        {filtered.length === 0 ? (
+          <div className="directory-empty-state">
+            <span className="empty-icon">📄</span>
+            <h4>No invoices found</h4>
+            <p>Try clearing your search query or click "+ Create Bill" to generate a new sales invoice.</p>
+          </div>
+        ) : (
+          <div className="table-responsive-wrapper">
+            <table className="directory-data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '130px' }}>Invoice No</th>
+                  <th style={{ width: '100px' }}>Date</th>
+                  <th style={{ minWidth: '220px' }}>Customer / Buyer</th>
+                  <th style={{ width: '130px' }}>GSTIN</th>
+                  <th style={{ width: '130px', textAlign: 'right' }}>Total (₹)</th>
+                  <th style={{ width: '120px', textAlign: 'center' }}>Tally Status</th>
+                  <th style={{ width: '160px', textAlign: 'center' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((inv) => {
+                  const isSynced = Boolean(inv.tallySync?.synced);
+                  return (
+                    <tr key={inv.id} className="customer-row">
+                      <td>
+                        <strong
+                          style={{ color: '#1e3a8a', cursor: 'pointer', fontSize: '13px' }}
+                          onClick={() => onViewInvoice(inv)}
+                          title="Click to view Tax Invoice"
+                        >
+                          {inv.invoiceNo}
+                        </strong>
+                      </td>
+                      <td style={{ color: '#64748b', fontSize: '12px' }}>
+                        {inv.date}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{inv.partyName}</div>
+                        {inv.shipTo?.name && inv.shipTo.name !== inv.partyName && (
+                          <div style={{ fontSize: '10.5px', color: '#047857' }}>
+                            Ship To: {inv.shipTo.name}
+                          </div>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`gstin-badge ${inv.gstin ? 'active' : 'unregistered'}`}>
+                          {inv.gstin || 'Unregistered'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a', fontSize: '13.5px' }}>
+                        {formatINR(inv.grandTotal)}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span
+                          className="state-badge"
+                          style={{
+                            background: isSynced ? '#dcfce7' : '#fef3c7',
+                            color: isSynced ? '#15803d' : '#b45309',
+                            borderColor: isSynced ? '#86efac' : '#fde68a',
+                            fontWeight: 700,
+                            fontSize: '11px'
+                          }}
+                        >
+                          {isSynced ? '✓ Synced' : '⏳ Pending'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn-view-cust-details"
+                            onClick={() => onViewInvoice(inv)}
+                            title="View and print Tax Invoice"
+                          >
+                            👁️ View
+                          </button>
 
-          return (
-            <div key={inv.id} className="invoice-card">
-              <div className="inv-card-head">
-                <div>
-                  <div className="inv-no">{inv.invoiceNo}</div>
-                  <div className="inv-date">{inv.date} · Due: {inv.dueDate}</div>
-                </div>
-                <span className={`badge ${isSynced ? 'badge-synced' : 'badge-pending'}`}>
-                  {isSynced ? '✓ Synced to Tally' : '⏳ Pending Tally'}
-                </span>
-              </div>
+                          <button
+                            type="button"
+                            className="btn-view-cust-details"
+                            onClick={() => onEditInvoice && onEditInvoice(inv)}
+                            style={{ background: '#f8fafc', color: '#334155', borderColor: '#cbd5e1' }}
+                            title="Edit this invoice"
+                          >
+                            ✏️ Edit
+                          </button>
 
-              <div className="inv-party">{inv.partyName}</div>
-
-              <div className="inv-tags-row">
-                <span className="badge" style={{ background: '#f1f5f9', color: '#475569' }}>
-                  📦 {firstItem} {itemsExtraCount > 0 ? `+${itemsExtraCount} more` : ''}
-                </span>
-                {inv.isInterstate ? (
-                  <span className="badge badge-interstate">IGST 18%</span>
-                ) : (
-                  <span className="badge" style={{ background: '#ecfdf5', color: '#047857' }}>CGST+SGST</span>
-                )}
-                {inv.vehicleNo && (
-                  <span className="badge" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b' }}>
-                    🚛 {inv.vehicleNo}
-                  </span>
-                )}
-                {inv.ewayBill?.ewayBillNo && (
-                  <span className="badge" style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#15803d', fontWeight: 800 }}>
-                    🚚 EWB: {inv.ewayBill.ewayBillNo}
-                  </span>
-                )}
-              </div>
-
-              <div className="inv-card-foot">
-                <div className="inv-total">{formatINR(inv.grandTotal)}</div>
-                <div className="inv-actions">
-                  <button
-                    className="btn-sm-action"
-                    onClick={() => onViewInvoice(inv)}
-                    title="View Tax Invoice"
-                  >
-                    👁️ View
-                  </button>
-                  <button
-                    className="btn-sm-action"
-                    onClick={() => onEditInvoice && onEditInvoice(inv)}
-                    title="Edit Bill Details"
-                    style={{ color: '#2563eb', borderColor: '#bfdbfe' }}
-                  >
-                    ✏️ Edit
-                  </button>
-                  <button
-                    className="btn-sm-action"
-                    disabled={fetchingEwbId === inv.id}
-                    onClick={() => handleFetchEwb(inv)}
-                    title={inv.ewayBill?.ewayBillNo ? `e-Way Bill: ${inv.ewayBill.ewayBillNo}` : 'Fetch/Sync e-Way Bill from Tally'}
-                    style={{ color: '#047857', borderColor: '#a7f3d0', background: '#ecfdf5', fontWeight: 700 }}
-                  >
-                    {fetchingEwbId === inv.id ? 'Fetching...' : (inv.ewayBill?.ewayBillNo ? '🚚 EWB' : '🚚 Get EWB')}
-                  </button>
-                  <a
-                    href={`/api/tally/invoice-xml/${inv.id}`}
-                    download={`Tally_${inv.invoiceNo.replace(/\//g, '_')}.xml`}
-                    className="btn-sm-action"
-                    title="Download XML"
-                    style={{ textDecoration: 'none' }}
-                  >
-                    XML
-                  </a>
-                  {!isSynced && (
-                    <button
-                      className="btn-sm-action btn-sm-sync"
-                      disabled={syncingId === inv.id}
-                      onClick={() => handleSyncSingle(inv)}
-                      title="Direct 1-Click Push to Tally Prime"
-                    >
-                      {syncingId === inv.id ? 'Pushing...' : '🔌 Push Tally'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
+                          {!isSynced && (
+                            <button
+                              type="button"
+                              className="btn-view-cust-details"
+                              disabled={syncingId === inv.id}
+                              onClick={() => handleSyncSingle(inv)}
+                              style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}
+                              title="Push to Tally Prime Sales Day Book"
+                            >
+                              {syncingId === inv.id ? '...' : '⚡ Push'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

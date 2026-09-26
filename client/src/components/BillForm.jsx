@@ -448,8 +448,7 @@ export default function BillForm({
       {/* 1. Header Toolbar Strip */}
       <div className="workbench-top-bar">
         <div className="bar-left">
-          <h2>{isEditing ? `Edit Invoice #${editingInvoice.invoiceNo}` : 'New Sales Invoice'}</h2>
-          <span className="billing-tenant-chip">Yamuna Plastics · Sales Voucher</span>
+          <h2>{isEditing ? `Edit Invoice #${editingInvoice.invoiceNo}` : 'Create Bill'}</h2>
         </div>
 
         <div className="bar-right">
@@ -458,9 +457,9 @@ export default function BillForm({
             className="btn-sync-tally-pill"
             onClick={handleSyncFromTally}
             disabled={syncingTally}
-            title="Pulls Sundry Debtors from active Tally Prime"
+            title="Fetch Sundry Debtors from active Tally Prime"
           >
-            {syncingTally ? '⏳ Fetching Tally...' : '⚡ Fetch from Tally'}
+            {syncingTally ? '⏳ Syncing...' : '⚡ Sync Tally'}
           </button>
 
           {isEditing && onCancelEdit && (
@@ -471,7 +470,7 @@ export default function BillForm({
         </div>
       </div>
 
-      {/* Tally Notice / Alerts */}
+      {/* Alerts */}
       {tallyNotice && (
         <div className={`workbench-alert ${tallyNotice.type}`}>
           <span>{tallyNotice.text}</span>
@@ -490,7 +489,7 @@ export default function BillForm({
         </div>
       )}
 
-      {/* 2. Invoice Meta Bar (Invoice No, Dates, Terms) */}
+      {/* 2. Invoice Meta Bar */}
       <div className="invoice-meta-card">
         <div className="meta-field-group">
           <label>Invoice Date</label>
@@ -511,7 +510,6 @@ export default function BillForm({
           >
             <option value="Credit 30 Days">Credit 30 Days</option>
             <option value="Credit 15 Days">Credit 15 Days</option>
-            <option value="Credit 45 Days">Credit 45 Days</option>
             <option value="Immediate / Cash">Immediate / Cash</option>
             <option value="Advance Payment">Advance Payment</option>
           </select>
@@ -528,9 +526,9 @@ export default function BillForm({
         </div>
 
         <div className="meta-field-group">
-          <label>GST Treatment</label>
+          <label>GST Nature</label>
           <div className="tax-treatment-badge">
-            {isInterstate ? '🌐 Interstate (IGST 18%)' : '📍 Gujarat Intra-State (CGST 9% + SGST 9%)'}
+            {isInterstate ? '🌐 Interstate (IGST 18%)' : '📍 Intra-State (CGST + SGST)'}
           </div>
         </div>
       </div>

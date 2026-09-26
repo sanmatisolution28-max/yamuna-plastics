@@ -271,45 +271,7 @@ export default function App() {
         </div>
       </nav>
 
-      {/* 3. KPI Metrics Dashboard Strip (Shown on Invoices and Tally views for clean elegance) */}
-      {(activeTab === 'invoices' || activeTab === 'tally') && (
-        <section className="kpi-banner">
-          <div className="kpi-inner">
-            <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
-              <div className="kpi-icon-wrap blue">📋</div>
-              <div className="kpi-content">
-                <span className="kpi-label">Total Invoices</span>
-                <span className="kpi-value">{totalBillsCount} Bills</span>
-                <span className="kpi-sub">All sales vouchers recorded</span>
-              </div>
-            </div>
-
-            <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
-              <div className="kpi-icon-wrap green">💰</div>
-              <div className="kpi-content">
-                <span className="kpi-label">Total Revenue</span>
-                <span className="kpi-value">{formatINR(totalRevenue)}</span>
-                <span className="kpi-sub">Inclusive of CGST / SGST</span>
-              </div>
-            </div>
-
-            <div className="kpi-card" onClick={() => setActiveTab('tally')}>
-              <div className={`kpi-icon-wrap ${pendingCount > 0 ? 'amber' : 'green'}`}>🔌</div>
-              <div className="kpi-content">
-                <span className="kpi-label">Tally Sync Status</span>
-                <span className="kpi-value">
-                  {syncedCount} / {totalBillsCount} Synced
-                </span>
-                <span className="kpi-sub">
-                  {pendingCount > 0 ? `${pendingCount} pending Day Book push` : '100% Up to date in Tally'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 4. Main Page Workspace */}
+      {/* Main Page Workspace */}
       <main className="app-workspace">
         {loading ? (
           <div className="loading-state-card">

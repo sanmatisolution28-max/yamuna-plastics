@@ -58,7 +58,29 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
     if (parent && !parent.toLowerCase().includes('debtor') && !parent.toLowerCase().includes('customer')) {
       continue;
     }
-    if (rawName.toLowerCase() === 'cash' || rawName.toLowerCase().includes('profit & loss')) {
+
+    const lowerName = rawName.toLowerCase();
+    const isExcluded =
+      lowerName === 'cash' ||
+      lowerName.includes('profit & loss') ||
+      lowerName.includes('cgst') ||
+      lowerName.includes('sgst') ||
+      lowerName.includes('igst') ||
+      lowerName.includes('output') ||
+      lowerName.includes('input') ||
+      lowerName.includes('round off') ||
+      lowerName.includes('freight') ||
+      lowerName.includes('delivery charge') ||
+      lowerName.includes('sales -') ||
+      lowerName.includes('interstate sales') ||
+      lowerName.includes('purchase') ||
+      lowerName.includes('bank') ||
+      lowerName.includes('duties & taxes') ||
+      lowerName.includes('discount') ||
+      lowerName.includes('expense') ||
+      lowerName.includes('ledger');
+
+    if (isExcluded) {
       continue;
     }
 
