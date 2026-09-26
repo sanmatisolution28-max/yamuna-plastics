@@ -446,9 +446,11 @@ router.post('/masters/tally-push', async (req, res) => {
     let xml = '';
     if (typeof req.body === 'string') {
       xml = req.body;
-    } else if (req.body && req.body.xml) {
+    } else if (Buffer.isBuffer(req.body)) {
+      xml = req.body.toString('utf8');
+    } else if (req.body && typeof req.body.xml === 'string') {
       xml = req.body.xml;
-    } else {
+    } else if (req.body && typeof req.body === 'object') {
       xml = JSON.stringify(req.body);
     }
 
