@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../utils/api';
 import { formatINR, numberToWords } from '../utils/numberToWords';
 import ProductPicker from './ProductPicker';
@@ -166,7 +166,158 @@ export default function BillForm({
   };
 
   // Populate from editingInvoice if present, or set default party/item
+  // --- Draft persistence -----------------------------------------------------
+  // The tab bar unmounts this form whenever the user opens another page, which
+  // used to silently throw away a half-built bill (party, dates and any line
+  // items already added). The draft is mirrored into localStorage so it survives
+  // tab changes *and* a full page reload, and is only dropped once the bill is
+  // actually saved or the user discards it explicitly.
+  const DRAFT_KEY = 'yamuna.billDraft.v1';
+  const [draftReady, setDraftReady] = useState(false);
+  const draftRestoredRef = useRef(false);
+
+  const clearDraft = () => {
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* storage blocked */ }
+  };
+
+  // Restore once on mount. Runs before the populate effect below so the flag is
+  // already set by the time that effect decides whether to auto-select defaults.
   useEffect(() => {
+    if (isEditing) { setDraftReady(true); return; }
+
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (raw) {
+        const d = JSON.parse(raw);
+        if (d && Array.isArray(d.lines) && d.lines.length) {
+          if (d.selectedPartyId) setSelectedPartyId(d.selectedPartyId);
+          if (d.partyDetails) setPartyDetails((prev) => ({ ...prev, ...d.partyDetails }));
+          if (d.shipToDetails) setShipToDetails((prev) => ({ ...prev, ...d.shipToDetails }));
+          if (typeof d.sameAsBillTo === 'boolean') setSameAsBillTo(d.sameAsBillTo);
+          if (typeof d.showCustomParty === 'boolean') setShowCustomParty(d.showCustomParty);
+          if (d.invoiceDate) setInvoiceDate(d.invoiceDate);
+          if (d.dueDate) setDueDate(d.dueDate);
+          if (d.paymentMode) setPaymentMode(d.paymentMode);
+          if (d.vehicleNo) setVehicleNo(d.vehicleNo);
+          if (d.transporter) setTransporter(d.transporter);
+          if (d.destination) setDestination(d.destination);
+          if (d.deliveryNote) setDeliveryNote(d.deliveryNote);
+          if (d.deliveryNoteDate) setDeliveryNoteDate(d.deliveryNoteDate);
+          if (typeof d.distance === 'number') setDistance(d.distance);
+          if (d.transporterId) setTransporterId(d.transporterId);
+          if (d.ewayBillNo) setEwayBillNo(d.ewayBillNo);
+          if (d.notes) setNotes(d.notes);
+          if (typeof d.freightCharges === 'number') setFreightCharges(d.freightCharges);
+          setLines(d.lines);
+          draftRestoredRef.current = true;
+        }
+      }
+    } catch { /* unreadable draft: start from a clean form */ }
+
+    setDraftReady(true);
+  }, [isEditing]);
+
+  // Persist on every change, once the draft has been restored.
+  useEffect(() => {
+    if (!draftReady || isEditing) return;
+    // Do not keep a draft that holds nothing worth restoring.
+    if (!partyDetails.name && !lines.some((l) => l.name)) {
+      clearDraft();
+      return;
+    }
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify({
+        selectedPartyId,
+        partyDetails,
+        shipToDetails,
+        sameAsBillTo,
+        showCustomParty,
+        invoiceDate,
+        dueDate,
+        paymentMode,
+        vehicleNo,
+        transporter,
+        destination,
+        deliveryNote,
+        deliveryNoteDate,
+        distance,
+        transporterId,
+        ewayBillNo,
+        notes,
+        freightCharges,
+        lines
+      }));
+    } catch { /* quota or private mode: the form still works in-memory */ }
+  }, [
+    draftReady, isEditing, selectedPartyId, partyDetails, shipToDetails, sameAsBillTo,
+    showCustomParty, invoiceDate, dueDate, paymentMode, vehicleNo, transporter,
+    destination, deliveryNote, deliveryNoteDate, distance, transporterId, ewayBillNo,
+    notes, freightCharges, lines
+  ]);
+
+  // Return every field to its default value.
+  const resetFormState = () => {
+    setShowCustomParty(false);
+    setSelectedPartyId('');
+    setPartySearch('');
+    setPartyDetails({
+      name: '',
+      gstin: '',
+      state: 'Gujarat',
+      stateCode: '24',
+      address: '',
+      phone: '',
+      placeOfSupply: 'Gujarat'
+    });
+    setSameAsBillTo(true);
+    setShipToDetails({ name: '', gstin: '', state: 'Gujarat', stateCode: '24', address: '', phone: '' });
+    setInvoiceDate(new Date().toISOString().slice(0, 10));
+    setDueDate(new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10));
+    setPaymentMode('Credit 30 Days');
+    setVehicleNo('');
+    setTransporter('');
+    setDestination('');
+    setDeliveryNote('');
+    setDeliveryNoteDate('');
+    setDistance(85);
+    setTransporterId('');
+    setEwayBillNo('');
+    setNotes('');
+    setFreightCharges(0);
+    setErrorMsg('');
+    setSuccessNotice(null);
+    setTallyNotice(null);
+    setLines([
+      {
+        id: `line-${Date.now()}`,
+        itemId: '',
+        name: '',
+        hsn: '39232100',
+        qty: 100,
+        unit: 'KGS',
+        rate: 0,
+        discountPct: 0,
+        gstRate: 18
+      }
+    ]);
+  };
+
+  // Explicitly throw the draft away and return the form to a clean state.
+  const discardDraft = () => {
+    const hasWork = lines.some((l) => l.name) || partyDetails.name;
+    if (hasWork && !window.confirm('Discard this unsaved bill draft and start a new one?')) {
+      return;
+    }
+    clearDraft();
+    draftRestoredRef.current = false;
+    resetFormState();
+  };
+
+  useEffect(() => {
+    // A stored draft is the user's in-progress work, so do not overwrite it with
+    // the default party or a blank first row.
+    if (!editingInvoice && draftRestoredRef.current && !preselectedPartyId) return;
+
     if (editingInvoice) {
       setSelectedPartyId(editingInvoice.partyId || '');
       setPartyDetails({
@@ -500,6 +651,10 @@ export default function BillForm({
 
       if (onBillGenerated) onBillGenerated(savedInvoice);
       if (onViewInvoice) onViewInvoice(savedInvoice);
+      // The bill is safely stored, so the in-progress draft is no longer needed.
+      clearDraft();
+      draftRestoredRef.current = false;
+      resetFormState();
     } catch (err) {
       setErrorMsg(err.message || 'Failed to save bill.');
     } finally {
@@ -516,6 +671,17 @@ export default function BillForm({
         </div>
 
         <div className="bar-right">
+          {!isEditing && (
+            <button
+              type="button"
+              className="btn-discard-draft"
+              onClick={discardDraft}
+              title="Clear this unsaved bill and start a fresh one"
+            >
+              🗑 Clear draft
+            </button>
+          )}
+
           <button
             type="button"
             className="btn-sync-tally-pill"

@@ -7,6 +7,7 @@ const inr = (n) => {
 
 export default function ProductPicker({ items = [], itemId, value, onSelect, onCustom, disabled }) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
   const [query, setQuery] = useState('');
   const [activeIdx, setActiveIdx] = useState(0);
   const wrapRef = useRef(null);
@@ -40,8 +41,15 @@ export default function ProductPicker({ items = [], itemId, value, onSelect, onC
     const onDocDown = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
     };
+    const reposition = () => place();
     document.addEventListener('mousedown', onDocDown);
-    return () => document.removeEventListener('mousedown', onDocDown);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      document.removeEventListener('mousedown', onDocDown);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
   }, [open]);
 
   useEffect(() => {
@@ -52,8 +60,34 @@ export default function ProductPicker({ items = [], itemId, value, onSelect, onC
     setActiveIdx(0);
   }, [query]);
 
+  // The table wrapper scrolls, which would clip an absolutely-positioned panel.
+  // So the panel is placed with fixed coordinates: it opens fully clear of the row,
+  // flips above the field when the space below is too small, and never needs the
+  // inner list to scroll for a normal catalog.
+  const place = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const width = Math.max(rect.width, 240);
+    const left = Math.min(Math.max(8, rect.left), Math.max(8, vw - width - 8));
+    const below = vh - rect.bottom;
+    const above = rect.top;
+    const dropUp = below < 300 && above > below;
+    setPos({
+      dropUp,
+      left,
+      width,
+      top: dropUp ? undefined : rect.bottom + 5,
+      bottom: dropUp ? vh - rect.top + 5 : undefined,
+      maxH: Math.max(140, (dropUp ? above : below) - 16)
+    });
+  };
+
   const openMenu = () => {
     if (disabled) return;
+    place();
     setQuery('');
     setActiveIdx(0);
     setOpen(true);
@@ -129,8 +163,17 @@ export default function ProductPicker({ items = [], itemId, value, onSelect, onC
         <span className={`product-picker-caret${open ? ' up' : ''}`} aria-hidden="true" />
       </div>
 
-      {open && (
-        <div className="product-picker-panel">
+      {open && pos && (
+        <div
+          className={`product-picker-panel${pos.dropUp ? ' is-up' : ''}`}
+          style={{
+            left: pos.left,
+            width: pos.width,
+            top: pos.top,
+            bottom: pos.bottom,
+            '--pp-max-h': `${pos.maxH}px`
+          }}
+        >
           <div className="pp-search-row">
             <input
               ref={searchRef}
@@ -155,20 +198,18 @@ export default function ProductPicker({ items = [], itemId, value, onSelect, onC
                   key={it.id || it.name}
                   role="option"
                   aria-selected={isSel}
+                  title={it.name}
                   className={`pp-option${i === activeIdx ? ' is-active' : ''}${isSel ? ' is-selected' : ''}`}
                   onMouseEnter={() => setActiveIdx(i)}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => choose(it)}
                 >
-                  <span className="pp-option-main">
-                    <span className="pp-option-name">{it.name}</span>
-                    <span className="pp-option-sub">
-                      ₹{inr(it.baseRate || it.rate)} / {it.unit || 'KGS'}
-                      {it.hsn ? ` · HSN ${it.hsn}` : ''}
-                      {it.category ? ` · ${it.category}` : ''}
-                    </span>
+                  <span className="pp-option-name">{it.name}</span>
+                  <span className="pp-option-rate">
+                    ₹{inr(it.baseRate || it.rate)}/{it.unit || 'KGS'}
                   </span>
-                  {isSel && <span className="pp-tick" aria-hidden="true">✓</span>}
+                  {it.hsn ? <span className="pp-option-hsn">HSN {it.hsn}</span> : null}
+                  {isSel ? <span className="pp-tick" aria-hidden="true">✓</span> : null}
                 </li>
               );
             })}

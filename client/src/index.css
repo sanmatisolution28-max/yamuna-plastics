@@ -2385,6 +2385,30 @@ button, input, select, textarea {
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
 }
 
+.btn-discard-draft {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  padding: 7px 15px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: all 0.2s ease;
+}
+
+.btn-discard-draft:hover {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.18);
+}
+
 .btn-cancel-edit-pill {
   background: #f1f5f9;
   border: 1px solid #cbd5e1;
@@ -4583,16 +4607,25 @@ button, input, select, textarea {
 }
 
 .product-picker-panel {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  right: 0;
-  z-index: 60;
+  /* fixed, not absolute: the bill table sits inside a scrollable wrapper that
+     would otherwise clip the dropdown. */
+  position: fixed;
+  z-index: 9999;
   background: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 11px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
   overflow: hidden;
+}
+
+/* Not enough room below the field: the panel opens upward instead. */
+.product-picker-panel.is-up {
+  box-shadow: 0 -18px 40px rgba(15, 23, 42, 0.18);
+}
+
+.product-picker-panel.is-up .pp-search-row {
+  border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
 }
 
 .pp-search-row {
@@ -4635,18 +4668,20 @@ button, input, select, textarea {
 
 .pp-list {
   margin: 0;
-  padding: 5px;
+  padding: 4px;
   list-style: none;
-  max-height: 244px;
+  /* Size to the content so a normal catalog shows every product with no
+     inner scrollbar; the cap is the space actually available on screen. */
+  max-height: var(--pp-max-h, 60vh);
   overflow-y: auto;
 }
 
 .pp-option {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 8px;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 7px;
   cursor: pointer;
   transition: background 0.12s ease;
 }
@@ -4663,15 +4698,9 @@ button, input, select, textarea {
   background: #bae6fd;
 }
 
-.pp-option-main {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.pp-option-name {
   flex: 1;
   min-width: 0;
-}
-
-.pp-option-name {
   font-size: 12.5px;
   font-weight: 700;
   color: #0f172a;
@@ -4680,12 +4709,27 @@ button, input, select, textarea {
   white-space: nowrap;
 }
 
-.pp-option-sub {
+.pp-option-rate {
+  flex: none;
+  padding: 2px 7px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 800;
+  color: #0369a1;
+  background: #e0f2fe;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.pp-option.is-selected .pp-option-rate {
+  color: #ffffff;
+  background: #0284c7;
+}
+
+.pp-option-hsn {
+  flex: none;
+  font-size: 10px;
+  font-weight: 700;
   color: #64748b;
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
