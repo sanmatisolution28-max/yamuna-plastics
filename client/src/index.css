@@ -105,6 +105,36 @@
   --warning-deep: #d97706;
   --warning-strong: #fbbf24;
   --warning-text: #854d0e;
+
+  /* Button/chip fills. Intentionally NOT re-declared for dark: a fill has
+     to stay dark enough to carry white text, while the same hue used as
+     ink on a dark surface is handled by the tokens above. */
+  --fill-primary: #2563eb;
+  --fill-primary-hover: #1d4ed8;
+  --fill-primary-active: #1e40af;
+  --fill-primary-deep: #1e3a8a;
+  --fill-success: #059669;
+  --fill-success-strong: #047857;
+  --fill-success-deep: #065f46;
+  --fill-warning: #b45309;
+  --fill-warning-deep: #92400e;
+  --fill-danger: #dc2626;
+  --fill-accent-cyan: #0369a1;
+  --fill-purple: #7c3aed;
+  --fill-indigo: #6366f1;
+  --fill-cyan: #06b6d4;
+  --fill-cyan-deep: #0e7490;
+
+  /* Ink tokens: text/icon colour when it sits on a tinted surface. */
+  --primary-ink: #1e40af;
+  --success-ink: #065f46;
+  --warning-ink: #92400e;
+  --danger-ink: #991b1b;
+  --accent-cyan-ink: #075985;
+  --purple-ink: #5b21b6;
+
+  /* Ink for text sitting directly ON a light amber fill. */
+  --warning-on-fill: #78350f;
 }
 
 /* Base Reset & Typography */
@@ -178,7 +208,7 @@ button, input, select, textarea {
   width: 38px;
   height: 38px;
   border-radius: 10px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--fill-primary) 0%, var(--fill-primary-hover) 100%);
   color: white;
   display: flex;
   align-items: center;
@@ -249,17 +279,17 @@ button, input, select, textarea {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--fill-success);
   box-shadow: 0 0 8px #10b981;
 }
 
 .status-indicator-dot.offline {
-  background: var(--warning);
+  background: var(--fill-warning);
   box-shadow: 0 0 8px #f59e0b;
 }
 
 .pending-alert-badge {
-  background: linear-gradient(135deg, var(--warning), var(--warning-deep));
+  background: linear-gradient(135deg, var(--fill-warning), var(--fill-warning-deep));
   color: var(--text-inverted);
   font-size: 11px;
   font-weight: 800;
@@ -275,7 +305,7 @@ button, input, select, textarea {
 
 .pending-alert-badge:hover {
   background: var(--warning-strong);
-  color: var(--warning-text);
+  color: var(--warning-on-fill);
   transform: translateY(-1px);
 }
 
@@ -296,7 +326,7 @@ button, input, select, textarea {
 }
 
 .btn-nav-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--fill-primary) 0%, var(--fill-primary-hover) 100%);
   color: white;
   border: none;
   padding: 7px 14px;
@@ -312,7 +342,7 @@ button, input, select, textarea {
 }
 
 .btn-nav-primary:hover {
-  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
+  background: linear-gradient(135deg, var(--fill-primary-hover) 0%, var(--fill-primary-active) 100%);
   box-shadow: 0 4px 14px rgba(37, 99, 235, 0.55);
   transform: translateY(-1px);
 }
@@ -388,10 +418,10 @@ button, input, select, textarea {
   box-shadow: var(--shadow-subtle);
 }
 
-.kpi-icon-wrap.blue { background: var(--primary-light); color: var(--primary); }
-.kpi-icon-wrap.green { background: var(--success-light); color: var(--success-strong); }
-.kpi-icon-wrap.amber { background: var(--warning-light); color: var(--warning-deep); }
-.kpi-icon-wrap.purple { background: var(--tint-purple-bg); color: var(--purple); }
+.kpi-icon-wrap.blue { background: var(--primary-light); color: var(--primary-ink); }
+.kpi-icon-wrap.green { background: var(--success-light); color: var(--success-ink); }
+.kpi-icon-wrap.amber { background: var(--warning-light); color: var(--warning-ink); }
+.kpi-icon-wrap.purple { background: var(--tint-purple-bg); color: var(--purple-ink); }
 
 .kpi-content {
   display: flex;
@@ -476,7 +506,7 @@ button, input, select, textarea {
 
 .tab-button.active {
   background: var(--primary-light);
-  color: var(--primary);
+  color: var(--primary-ink);
   border-color: rgba(37, 99, 235, 0.25);
   box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
 }
@@ -492,12 +522,12 @@ button, input, select, textarea {
 }
 
 .tab-button.active .tab-badge {
-  background: var(--primary);
+  background: var(--fill-primary);
   color: var(--text-inverted);
 }
 
 .tab-badge.warning {
-  background: var(--warning);
+  background: var(--fill-warning);
   color: var(--text-inverted);
 }
 
@@ -590,7 +620,7 @@ button, input, select, textarea {
   padding: 3px 9px;
   border-radius: var(--radius-full);
   background: var(--primary-light);
-  color: var(--primary);
+  color: var(--primary-ink);
   font-weight: 700;
 }
 
@@ -716,7 +746,7 @@ button, input, select, textarea {
 
 .btn-add-line {
   background: var(--primary-light);
-  color: var(--primary);
+  color: var(--primary-ink);
   border: 1px dashed rgba(37, 99, 235, 0.4);
   padding: 9px 16px;
   border-radius: var(--radius-sm);
@@ -823,7 +853,7 @@ button, input, select, textarea {
 }
 
 .btn-action-primary {
-  background: linear-gradient(135deg, var(--success-strong) 0%, var(--success-deep) 100%);
+  background: linear-gradient(135deg, var(--fill-success-strong) 0%, var(--fill-success-deep) 100%);
   color: white;
   border: none;
   padding: 13px 20px;
@@ -840,13 +870,13 @@ button, input, select, textarea {
 }
 
 .btn-action-primary:hover {
-  background: linear-gradient(135deg, var(--success-deep) 0%, var(--success-deep) 100%);
+  background: linear-gradient(135deg, var(--fill-success-deep) 0%, var(--fill-success-deep) 100%);
   box-shadow: 0 6px 16px rgba(5, 150, 105, 0.45);
   transform: translateY(-1px);
 }
 
 .btn-action-secondary {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--fill-primary) 0%, var(--fill-primary-hover) 100%);
   color: white;
   border: none;
   padding: 12px 18px;
@@ -863,7 +893,7 @@ button, input, select, textarea {
 }
 
 .btn-action-secondary:hover {
-  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
+  background: linear-gradient(135deg, var(--fill-primary-hover) 0%, var(--fill-primary-active) 100%);
   transform: translateY(-1px);
 }
 
@@ -1064,13 +1094,13 @@ button, input, select, textarea {
 
 .badge-status.synced {
   background: var(--success-light);
-  color: var(--success);
+  color: var(--success-ink);
   border: 1px solid var(--success-border);
 }
 
 .badge-status.pending {
   background: var(--warning-light);
-  color: var(--warning);
+  color: var(--warning-ink);
   border: 1px solid var(--warning-border);
 }
 
@@ -1264,19 +1294,19 @@ button, input, select, textarea {
 
 .badge-synced {
   background: var(--success-light);
-  color: var(--success);
+  color: var(--success-ink);
   border: 1px solid var(--success-border);
 }
 
 .badge-pending {
   background: var(--warning-light);
-  color: var(--warning);
+  color: var(--warning-ink);
   border: 1px solid var(--warning-border);
 }
 
 .badge-interstate {
   background: var(--accent-cyan-light);
-  color: var(--accent-cyan);
+  color: var(--accent-cyan-ink);
   border: 1px solid var(--tint-cyan-bg-strong);
 }
 
@@ -1302,14 +1332,14 @@ button, input, select, textarea {
 }
 
 .btn-sm-action.btn-sm-sync {
-  background: linear-gradient(135deg, var(--success-strong) 0%, var(--success-deep) 100%);
+  background: linear-gradient(135deg, var(--fill-success-strong) 0%, var(--fill-success-deep) 100%);
   color: white;
   border-color: transparent;
   box-shadow: 0 1px 4px rgba(5, 150, 105, 0.3);
 }
 
 .btn-sm-action.btn-sm-sync:hover {
-  background: linear-gradient(135deg, var(--success-deep) 0%, var(--success-deep) 100%);
+  background: linear-gradient(135deg, var(--fill-success-deep) 0%, var(--fill-success-deep) 100%);
   box-shadow: 0 2px 8px rgba(5, 150, 105, 0.45);
 }
 
@@ -1433,7 +1463,7 @@ button, input, select, textarea {
 .login-ambient-orb.orb-1 {
   width: 380px;
   height: 380px;
-  background: radial-gradient(circle, var(--primary) 0%, rgba(37, 99, 235, 0) 70%);
+  background: radial-gradient(circle, var(--fill-primary) 0%, rgba(37, 99, 235, 0) 70%);
   top: -60px;
   left: 10%;
   animation-duration: 16s;
@@ -1442,7 +1472,7 @@ button, input, select, textarea {
 .login-ambient-orb.orb-2 {
   width: 420px;
   height: 420px;
-  background: radial-gradient(circle, var(--cyan) 0%, rgba(6, 182, 212, 0) 70%);
+  background: radial-gradient(circle, var(--fill-cyan) 0%, rgba(6, 182, 212, 0) 70%);
   bottom: -80px;
   right: 12%;
   animation-duration: 22s;
@@ -1451,7 +1481,7 @@ button, input, select, textarea {
 .login-ambient-orb.orb-3 {
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, var(--indigo) 0%, rgba(99, 102, 241, 0) 70%);
+  background: radial-gradient(circle, var(--fill-indigo) 0%, rgba(99, 102, 241, 0) 70%);
   top: 40%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -1504,7 +1534,7 @@ button, input, select, textarea {
   left: 0;
   right: 0;
   height: 3px;
-  background: linear-gradient(90deg, var(--primary) 0%, var(--cyan) 50%, var(--purple-soft) 100%);
+  background: linear-gradient(90deg, var(--fill-primary) 0%, var(--fill-cyan) 50%, var(--purple-soft) 100%);
   box-shadow: 0 0 16px rgba(59, 130, 246, 0.8);
 }
 
@@ -1607,7 +1637,7 @@ button, input, select, textarea {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--fill-success);
   box-shadow: 0 0 8px #10b981;
   animation: radarPulse 2s infinite;
 }
@@ -1758,7 +1788,7 @@ button, input, select, textarea {
   position: relative;
   width: 100%;
   padding: 13px 20px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 55%, var(--accent-cyan) 100%);
+  background: linear-gradient(135deg, var(--fill-primary) 0%, var(--fill-primary-hover) 55%, var(--fill-accent-cyan) 100%);
   color: var(--text-inverted);
   border: none;
   border-radius: 12px;
@@ -1790,7 +1820,7 @@ button, input, select, textarea {
 .btn-login-action:hover:not(:disabled) {
   transform: translateY(-1.5px);
   box-shadow: 0 10px 28px -2px rgba(37, 99, 235, 0.65), 0 0 20px rgba(56, 189, 248, 0.4);
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary) 55%, var(--accent-cyan) 100%);
+  background: linear-gradient(135deg, var(--fill-primary) 0%, var(--fill-primary) 55%, var(--fill-accent-cyan) 100%);
 }
 
 .btn-login-action:active:not(:disabled) {
@@ -1950,7 +1980,7 @@ button, input, select, textarea {
 }
 
 .profile-hero-banner {
-  background: linear-gradient(135deg, var(--bg-dark-header) 0%, var(--primary-deep) 60%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--bg-dark-header) 0%, var(--fill-primary-deep) 60%, var(--fill-primary-hover) 100%);
   border-radius: 18px;
   padding: 26px 30px;
   color: white;
@@ -2004,7 +2034,7 @@ button, input, select, textarea {
 }
 
 .badge-super-admin {
-  background: var(--primary);
+  background: var(--fill-primary);
   color: var(--text-inverted);
   padding: 3px 10px;
   border-radius: 9999px;
@@ -2048,7 +2078,7 @@ button, input, select, textarea {
 }
 
 .btn-danger-signout:hover {
-  background: var(--danger);
+  background: var(--fill-danger);
   color: var(--text-inverted);
   border-color: var(--danger);
   box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4);
@@ -2146,13 +2176,13 @@ button, input, select, textarea {
 .profile-alert.error {
   background: var(--danger-light);
   border: 1.5px solid var(--danger-border);
-  color: var(--danger-text);
+  color: var(--danger-ink);
 }
 
 .profile-alert.warning {
   background: var(--warning-light);
   border: 1.5px solid var(--warning-border);
-  color: var(--warning-text);
+  color: var(--warning-ink);
 }
 
 .profile-form {
@@ -2231,7 +2261,7 @@ button, input, select, textarea {
 }
 
 .btn-primary-gradient {
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+  background: linear-gradient(135deg, var(--fill-primary) 0%, var(--fill-primary-hover) 100%);
   color: white;
   border: none;
   padding: 10px 20px;
@@ -2244,7 +2274,7 @@ button, input, select, textarea {
 }
 
 .btn-primary-gradient:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-active) 100%);
+  background: linear-gradient(135deg, var(--fill-primary-hover) 0%, var(--fill-primary-active) 100%);
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(37, 99, 235, 0.45);
 }
@@ -2287,7 +2317,7 @@ button, input, select, textarea {
   height: 20px;
   border-radius: 50%;
   background: var(--success-bg-strong);
-  color: var(--success-strong);
+  color: var(--success-ink);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2319,7 +2349,7 @@ button, input, select, textarea {
 
 .badge-ewb-auto {
   background: var(--success-light);
-  color: var(--success-deep);
+  color: var(--success-ink);
   padding: 2px 8px;
   border-radius: 9999px;
   font-weight: 700;
@@ -2399,7 +2429,7 @@ button, input, select, textarea {
   display: inline-block;
   background: var(--primary-light);
   border: 1px solid #dbeafe;
-  color: var(--primary-active);
+  color: var(--primary-ink);
   font-size: 11px;
   font-weight: 700;
   padding: 2px 8px;
@@ -2407,7 +2437,7 @@ button, input, select, textarea {
 }
 
 .btn-sync-tally-pill {
-  background: linear-gradient(135deg, var(--success) 0%, var(--success-strong) 100%);
+  background: linear-gradient(135deg, var(--fill-success) 0%, var(--fill-success-strong) 100%);
   color: white;
   border: none;
   padding: 7px 15px;
@@ -2423,7 +2453,7 @@ button, input, select, textarea {
 }
 
 .btn-sync-tally-pill:hover:not(:disabled) {
-  background: var(--success-deep);
+  background: var(--fill-success-deep);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
 }
@@ -2446,8 +2476,8 @@ button, input, select, textarea {
 
 .btn-discard-draft:hover {
   background: var(--danger-light);
-  border-color: var(--danger-border);
-  color: var(--danger-text);
+  border-color: var(--danger-ink);
+  color: var(--danger-ink);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(220, 38, 38, 0.18);
 }
@@ -2480,13 +2510,13 @@ button, input, select, textarea {
 .workbench-alert.warning {
   background: var(--warning-light);
   border: 1.5px solid var(--warning-border);
-  color: var(--warning-text);
+  color: var(--warning-ink);
 }
 
 .workbench-alert.error {
   background: var(--danger-light);
   border: 1.5px solid var(--danger-border);
-  color: var(--danger-text);
+  color: var(--danger-ink);
 }
 
 /* 2. Invoice Meta Bar */
@@ -2768,7 +2798,7 @@ button, input, select, textarea {
 .badge-gstin-verified {
   background: var(--success-light);
   border: 1px solid var(--success-border);
-  color: var(--success-deep);
+  color: var(--success-ink);
   padding: 2px 8px;
   border-radius: 9999px;
   font-size: 11px;
@@ -2843,7 +2873,7 @@ button, input, select, textarea {
 .btn-table-add-row {
   background: var(--primary-light);
   border: 1px solid var(--tint-blue-border);
-  color: var(--primary-hover);
+  color: var(--primary-ink);
   padding: 4px 10px;
   border-radius: 6px;
   font-size: 11.5px;
@@ -2955,7 +2985,7 @@ button, input, select, textarea {
 .btn-table-row-delete {
   background: var(--danger-bg);
   border: 1px solid var(--danger-border);
-  color: var(--danger);
+  color: var(--danger-ink);
   border-radius: 6px;
   padding: 4px 6px;
   cursor: pointer;
@@ -2966,7 +2996,7 @@ button, input, select, textarea {
 }
 
 .btn-table-row-delete:hover {
-  background: var(--danger);
+  background: var(--fill-danger);
   color: white;
 }
 
@@ -2979,7 +3009,7 @@ button, input, select, textarea {
 .btn-add-line-outline {
   background: var(--bg-card);
   border: 1.5px dashed var(--border-focus);
-  color: var(--primary);
+  color: var(--primary-ink);
   padding: 6px 14px;
   border-radius: 8px;
   font-size: 11.5px;
@@ -3111,7 +3141,7 @@ button, input, select, textarea {
 }
 
 .btn-action-tally-push {
-  background: linear-gradient(135deg, var(--success) 0%, var(--success-strong) 100%);
+  background: linear-gradient(135deg, var(--fill-success) 0%, var(--fill-success-strong) 100%);
   color: white;
   border: none;
   padding: 9px 18px;
@@ -3124,12 +3154,12 @@ button, input, select, textarea {
 }
 
 .btn-action-tally-push:hover:not(:disabled) {
-  background: var(--success-deep);
+  background: var(--fill-success-deep);
   transform: translateY(-1px);
 }
 
 .btn-action-save-local {
-  background: var(--primary);
+  background: var(--fill-primary);
   color: white;
   border: none;
   padding: 9px 16px;
@@ -3141,7 +3171,7 @@ button, input, select, textarea {
 }
 
 .btn-action-save-local:hover:not(:disabled) {
-  background: var(--primary-hover);
+  background: var(--fill-primary-hover);
 }
 
 /* ==========================================================================
@@ -3227,7 +3257,7 @@ button, input, select, textarea {
 .btn-toggle-custom-party {
   background: var(--bg-subtle);
   border: 1px solid var(--border-medium);
-  color: var(--primary);
+  color: var(--primary-ink);
   font-size: 11px;
   font-weight: 700;
   padding: 5px 12px;
@@ -3263,13 +3293,13 @@ button, input, select, textarea {
 }
 
 .switch-segment.active {
-  background: var(--success);
+  background: var(--fill-success-deep);
   color: var(--text-inverted);
   box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
 }
 
 .switch-segment.active.different {
-  background: var(--primary);
+  background: var(--fill-primary);
   color: var(--text-inverted);
   box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
 }
@@ -3345,7 +3375,7 @@ button, input, select, textarea {
   gap: 10px;
   background: var(--success-light);
   border: 1.5px solid var(--success-border);
-  color: var(--success-deep);
+  color: var(--success-ink);
   font-size: 12px;
   font-weight: 700;
   padding: 12px 14px;
@@ -3353,7 +3383,7 @@ button, input, select, textarea {
 }
 
 .badge-icon {
-  background: var(--success-strong);
+  background: var(--fill-success-strong);
   color: white;
   width: 20px;
   height: 20px;
@@ -3529,7 +3559,7 @@ button, input, select, textarea {
 }
 
 .btn-copy-chip.active {
-  background: var(--primary);
+  background: var(--fill-primary);
   color: white;
   font-weight: 800;
   box-shadow: 0 1px 4px rgba(37, 99, 235, 0.3);
@@ -3552,8 +3582,8 @@ button, input, select, textarea {
 
 .btn-close-modal-icon:hover {
   background: var(--danger-bg);
-  color: var(--danger);
-  border-color: var(--danger-border);
+  color: var(--danger-ink);
+  border-color: var(--danger-ink);
 }
 
 .invoice-sync-alert {
@@ -4202,7 +4232,7 @@ button, input, select, textarea {
 
 .switch-segment.active.different {
   background: var(--success-light);
-  color: var(--success-deep);
+  color: var(--success-ink);
   font-weight: 800;
   border: 1px solid var(--success-border);
 }
@@ -4276,7 +4306,7 @@ button, input, select, textarea {
 }
 
 .btn-add-customer-pill {
-  background: var(--primary);
+  background: var(--fill-primary);
   color: white;
   border: none;
   padding: 7px 15px;
@@ -4289,7 +4319,7 @@ button, input, select, textarea {
 }
 
 .btn-add-customer-pill:hover {
-  background: var(--primary-hover);
+  background: var(--fill-primary-hover);
 }
 
 .directory-filter-bar {
@@ -4429,7 +4459,7 @@ button, input, select, textarea {
 
 .gstin-badge.active {
   background: var(--success-light);
-  color: var(--success-deep);
+  color: var(--success-ink);
   border: 1px solid var(--success-border);
 }
 
@@ -4468,7 +4498,7 @@ button, input, select, textarea {
 .btn-view-cust-details {
   background: var(--primary-light);
   border: 1px solid var(--tint-blue-border);
-  color: var(--primary-hover);
+  color: var(--primary-ink);
   font-size: 11.5px;
   font-weight: 700;
   padding: 4px 10px;
@@ -4595,7 +4625,7 @@ button, input, select, textarea {
 
 .product-picker-control.has-value {
   background: var(--accent-cyan-light);
-  border-color: var(--tint-cyan-border);
+  border-color: var(--accent-cyan-ink);
 }
 
 .product-picker-text {
@@ -4765,7 +4795,7 @@ button, input, select, textarea {
 
 .pp-option.is-selected .pp-option-rate {
   color: var(--text-inverted);
-  background: var(--accent-cyan);
+  background: var(--fill-accent-cyan);
 }
 
 .pp-option-hsn {
@@ -5268,14 +5298,16 @@ button, input, select, textarea {
 }
 /* ==========================================================================
    DARK THEME CONTRAST CORRECTIONS
-   Chips and badges that sit on a saturated fill keep a dark ink in dark mode.
-   Without these the fill is light while the label is still white.
+   Only the one case that still needs it: --warning-strong is deliberately
+   light in dark mode (it is a tint-level amber), so text on top of it has to
+   be dark. Every other fill now uses a --fill-* token that stays dark enough
+   for white text in BOTH themes, so those overrides were removed - they were
+   painting dark ink onto a dark fill.
    ========================================================================== */
-[data-theme='dark'] .pending-alert-badge:hover { color: #451a03; }
-[data-theme='dark'] .tab-badge.warning { color: #451a03; }
-[data-theme='dark'] .btn-danger-signout:hover { color: #450a0a; }
-[data-theme='dark'] .switch-segment.active { color: #022c22; }
-[data-theme='dark'] .pp-option.is-selected .pp-option-rate { color: #082f49; }
+[data-theme='dark'] .pending-alert-badge:hover { color: var(--warning-on-fill); }
+/* The active segment is a raised --bg-card pill, not a saturated fill, so it
+   follows the normal ink ramp in both themes. */
+[data-theme='dark'] .switch-segment.active { color: var(--text-main); }
 
 /* --------------------------------------------------------------------------
    INVOICE SHEET ALWAYS RENDERS AS PAPER
@@ -5311,4 +5343,31 @@ button, input, select, textarea {
   --danger: #dc2626;
   --warning: #d97706;
   --primary: #2563eb;
+  /* Ink tokens must be re-scoped too, otherwise a chip added to the sheet
+     later would resolve the dark (light-valued) ink and vanish on paper. */
+  --primary-ink: #1e40af;
+  --success-ink: #065f46;
+  --warning-ink: #92400e;
+  --warning-on-fill: #78350f;
+  --danger-ink: #991b1b;
+  --accent-cyan-ink: #075985;
+  --purple-ink: #5b21b6;
+}
+
+/* --------------------------------------------------------------------------
+   INK TOKENS · DARK
+   The same tokens are used for text sitting on a tinted chip, so in dark mode
+   the ink becomes the light end of the ramp. Declared separately to keep the
+   light block readable.
+   -------------------------------------------------------------------------- */
+[data-theme='dark'] {
+  --primary-ink: #93c5fd;
+  --success-ink: #6ee7b7;
+  --warning-ink: #fcd34d;
+  --warning-on-fill: #451a03;
+  --danger-ink: #fca5a5;
+  --accent-cyan-ink: #7dd3fc;
+  --purple-ink: #c4b5fd;
+  /* Fills keep their value so white text stays legible. */
+  --fill-cyan-deep: #0e7490;
 }
