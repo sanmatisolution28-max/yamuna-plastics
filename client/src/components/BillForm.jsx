@@ -795,12 +795,12 @@ export default function BillForm({
         </div>
       </div>
 
-      {/* 5. Dispatch, Transport & E-Way Bill Strip */}
+      {/* 5. Dispatch & Transport Details */}
       <div className="dispatch-strip-card">
         <div className="card-section-header">
           <div className="header-title">
             <span className="section-icon">🚚</span>
-            <h3>Dispatch &amp; Transport Details (e-Way Bill Option 1)</h3>
+            <h3>Transport &amp; Vehicle Details (Optional)</h3>
           </div>
         </div>
 
@@ -828,17 +828,7 @@ export default function BillForm({
           </div>
 
           <div className="dispatch-col">
-            <label>Approx Distance (km)</label>
-            <input
-              type="number"
-              className="clean-input"
-              value={distance}
-              onChange={(e) => setDistance(e.target.value)}
-            />
-          </div>
-
-          <div className="dispatch-col">
-            <label>Delivery Note / Challan No.</label>
+            <label>Challan / Delivery Note</label>
             <input
               type="text"
               className="clean-input"
@@ -929,7 +919,7 @@ export default function BillForm({
       {/* 7. Bottom Fixed / Sticky Action Bar */}
       <div className="workbench-bottom-actions">
         <div className="action-hint">
-          <span>⚡ Auto Option 1: Zero-Click Tally Sync &amp; e-Way Bill Active</span>
+          <span>⚡ Direct push to Tally Prime Sales Day Book</span>
         </div>
 
         <div className="action-buttons-group">

@@ -304,15 +304,6 @@ export default function App() {
                 </span>
               </div>
             </div>
-
-            <div className="kpi-card" onClick={() => setActiveTab('invoices')}>
-              <div className="kpi-icon-wrap purple">🚚</div>
-              <div className="kpi-content">
-                <span className="kpi-label">e-Way Bills</span>
-                <span className="kpi-value">{ewbCount} Generated</span>
-                <span className="kpi-sub">Option 1: 100% Auto-Compliant</span>
-              </div>
-            </div>
           </div>
         </section>
       )}
