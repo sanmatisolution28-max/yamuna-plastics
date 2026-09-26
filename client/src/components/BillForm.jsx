@@ -91,15 +91,21 @@ export default function BillForm({
         });
         if (onRefresh) await onRefresh();
       } else {
+        const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         setTallyNotice({
           type: 'warning',
-          text: res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.'
+          text: isCloud
+            ? '💡 Cloud Note: To push Tally from your PC to this live portal, double-click "Sync_Tally_to_Cloud.bat" or open http://localhost:5005 on your PC.'
+            : (res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.')
         });
       }
     } catch (err) {
+      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setTallyNotice({
         type: 'warning',
-        text: 'Tally Prime on Port 9000 is on standby. All saved masters remain ready.'
+        text: isCloud
+          ? '💡 Cloud Note: To push Tally from your PC to this live portal, double-click "Sync_Tally_to_Cloud.bat" or open http://localhost:5005 on your PC.'
+          : 'Tally Prime on Port 9000 is on standby. All saved masters remain ready.'
       });
     } finally {
       setSyncingTally(false);

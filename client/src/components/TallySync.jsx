@@ -64,15 +64,21 @@ export default function TallySync({
         });
         if (onRefreshInvoices) onRefreshInvoices();
       } else {
+        const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         setMastersNotice({
           type: 'warning',
-          text: `⚠️ ${res.error || 'Could not fetch from Tally Prime on Port 9000.'}`
+          text: isCloud
+            ? `💡 Cloud Portal Note: Tally Prime is running on your local computer. To sync with this live cloud website, double-click "Sync_Tally_to_Cloud.bat" on your PC, or open http://localhost:5005.`
+            : `⚠️ ${res.error || 'Could not fetch from Tally Prime on Port 9000.'}`
         });
       }
     } catch (err) {
+      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setMastersNotice({
         type: 'warning',
-        text: `⚠️ Tally Prime Port 9000 is on standby. Ensure Tally is open.`
+        text: isCloud
+          ? `💡 Cloud Portal Note: Tally Prime is on your local PC. Double-click "Sync_Tally_to_Cloud.bat" on your computer to push customers to the live portal, or open http://localhost:5005.`
+          : `⚠️ Tally Prime Port 9000 is on standby. Ensure Tally is open.`
       });
     } finally {
       setSyncingMasters(false);
