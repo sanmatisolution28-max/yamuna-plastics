@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { formatINR, numberToWords } from '../utils/numberToWords';
+import ProductPicker from './ProductPicker';
 
 export default function BillForm({
   onBillGenerated,
@@ -242,17 +243,16 @@ export default function BillForm({
     if (!editingInvoice && items.length > 0) {
       setLines((prev) => {
         if (prev.length === 1 && !prev[0].name) {
-          const first = items[0];
           return [{
             id: 'line-1',
-            itemId: first.id || '',
-            name: first.name,
-            hsn: first.hsn || '39232100',
+            itemId: '',
+            name: '',
+            hsn: '39232100',
             qty: 100,
-            unit: first.unit || 'KGS',
-            rate: Number(first.baseRate || first.rate || 0),
+            unit: 'KGS',
+            rate: 0,
             discountPct: 0,
-            gstRate: Number(first.gstRate || 18)
+            gstRate: 18
           }];
         }
         return prev;
@@ -263,21 +263,21 @@ export default function BillForm({
   // Is interstate supply? Gujarat state code is "24"
   const isInterstate = String(partyDetails.stateCode).trim() !== '24';
 
-  // Add line item row with dynamic default from Tally items
+  // Add line item row. Starts empty on purpose: the product must be chosen explicitly,
+  // so a line can never silently default to an arbitrary Tally item.
   const addLine = () => {
-    const defaultItem = items && items.length > 0 ? items[0] : null;
     setLines((prev) => [
       ...prev,
       {
         id: `line-${Date.now()}`,
-        itemId: defaultItem ? (defaultItem.id || '') : '',
-        name: defaultItem ? defaultItem.name : '',
-        hsn: defaultItem ? (defaultItem.hsn || '39232100') : '39232100',
+        itemId: '',
+        name: '',
+        hsn: '39232100',
         qty: 100,
-        unit: defaultItem ? (defaultItem.unit || 'KGS') : 'KGS',
-        rate: defaultItem ? Number(defaultItem.baseRate || defaultItem.rate || 0) : 125.00,
+        unit: 'KGS',
+        rate: 0,
         discountPct: 0,
-        gstRate: defaultItem ? Number(defaultItem.gstRate || 18) : 18
+        gstRate: 18
       }
     ]);
   };
@@ -288,17 +288,36 @@ export default function BillForm({
     setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Apply a product chosen from the picker: match on the stable item id, never on a
+  // fuzzy name, so a selection can never bind to the wrong product.
+  const applyItemToLine = (index, item) => {
+    setLines((prev) => {
+      const copy = [...prev];
+      const current = copy[index] || {};
+      copy[index] = {
+        ...current,
+        itemId: item.id || '',
+        name: item.name,
+        hsn: item.hsn || current.hsn || '39232100',
+        unit: item.unit || current.unit || 'KGS',
+        rate: Number(item.baseRate || item.rate || current.rate || 0),
+        gstRate: Number(item.gstRate || current.gstRate || 18)
+      };
+      return copy;
+    });
+  };
+
   // Update line item field with automatic product rate & HSN lookup
   const updateLine = (index, field, value) => {
     setLines((prev) => {
       const copy = [...prev];
       if (field === 'name') {
-        const trimmedVal = String(value || '').trim().toLowerCase();
-        const matchedItem = items.find(
+        // Prefer an exact id match, then an exact (case-insensitive) name match.
+        const wanted = String(value == null ? '' : value).trim().toLowerCase();
+        const matchedItem = (items || []).find(
           (it) =>
-            it.name.toLowerCase() === trimmedVal ||
-            it.id === value ||
-            it.name.toLowerCase().startsWith(trimmedVal)
+            it &&
+            (String(it.id) === String(value) || String(it.name || '').trim().toLowerCase() === wanted)
         );
 
         if (matchedItem) {
@@ -387,6 +406,11 @@ export default function BillForm({
 
     if (lines.length === 0 || lines.some((l) => !l.qty || l.qty <= 0)) {
       setErrorMsg('Please specify valid product quantities for all items.');
+      return;
+    }
+
+    if (lines.some((l) => !String(l.name || '').trim())) {
+      setErrorMsg('Please select a product for every line item.');
       return;
     }
 
@@ -954,41 +978,16 @@ export default function BillForm({
                   <td className="row-index">{idx + 1}</td>
                   <td>
                     {items && items.length > 0 && !line.isCustomItem ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <select
-                          className="table-cell-select bold"
-                          style={{
-                            width: '100%',
-                            minWidth: '240px',
-                            padding: '7px 10px',
-                            fontWeight: 700,
-                            fontSize: '13px',
-                            background: '#ffffff',
-                            border: '1.5px solid #0284c7',
-                            borderRadius: '6px',
-                            color: '#0f172a',
-                            cursor: 'pointer'
-                          }}
-                          value={line.name || ''}
-                          onChange={(e) => {
-                            if (e.target.value === '__custom__') {
-                              updateLine(idx, 'isCustomItem', true);
-                              updateLine(idx, 'name', '');
-                            } else {
-                              updateLine(idx, 'name', e.target.value);
-                            }
-                          }}
-                          required
-                        >
-                          <option value="">-- Click to Select Product ({items.length} from Tally) --</option>
-                          {items.map((it) => (
-                            <option key={it.id || it.name} value={it.name}>
-                              {it.name} — ₹{it.baseRate || it.rate || 0}/{it.unit || 'KGS'}
-                            </option>
-                          ))}
-                          <option value="__custom__">✏️ + Custom / Type Manually...</option>
-                        </select>
-                      </div>
+                      <ProductPicker
+                        items={items}
+                        itemId={line.itemId || ''}
+                        value={line.name || ''}
+                        onSelect={(it) => applyItemToLine(idx, it)}
+                        onCustom={() => {
+                          updateLine(idx, 'isCustomItem', true);
+                          updateLine(idx, 'name', '');
+                        }}
+                      />
                     ) : (
                       <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                         <input
