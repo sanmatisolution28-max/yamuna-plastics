@@ -169,8 +169,10 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
 
     // Rate
     let rate = 125.00;
-    const rateMatch = content.match(/<CLOSINGRATE[^>]*>([0-9.]+)[^<]*<\/CLOSINGRATE>/i) ||
-                      content.match(/<OPENINGRATE[^>]*>([0-9.]+)[^<]*<\/OPENINGRATE>/i);
+    const rateMatch = content.match(/<CLOSINGRATE[^>]*>([0-9.]+)/i) ||
+                      content.match(/<OPENINGRATE[^>]*>([0-9.]+)/i) ||
+                      content.match(/<STANDARDPRICELIST.LIST>[\s\S]*?<RATE>([0-9.]+)/i) ||
+                      content.match(/<RATE[^>]*>([0-9.]+)/i);
     if (rateMatch && Number(rateMatch[1]) > 0) {
       rate = Number(rateMatch[1]);
     }
