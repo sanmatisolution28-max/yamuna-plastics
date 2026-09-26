@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 
-export default function TallySync({ invoices, settings, onRefreshInvoices }) {
+export default function TallySync({
+  invoices = [],
+  parties = [],
+  items = [],
+  settings,
+  onRefreshInvoices
+}) {
   const [tallyStatus, setTallyStatus] = useState(null);
   const [checking, setChecking] = useState(false);
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncResult, setSyncResult] = useState(null);
+  const [syncingMasters, setSyncingMasters] = useState(false);
+  const [mastersNotice, setMastersNotice] = useState(null);
+  const [importingXml, setImportingXml] = useState(false);
 
   // e-Way Bill Credentials & Auto-Generation State (Option 1)
   const [ewbForm, setEwbForm] = useState({
@@ -135,6 +144,66 @@ export default function TallySync({ invoices, settings, onRefreshInvoices }) {
     }
   };
 
+  const handleFetchMasters = async () => {
+    setSyncingMasters(true);
+    setMastersNotice(null);
+    try {
+      const res = await api.fetchMastersFromTally();
+      if (res.success) {
+        setMastersNotice({
+          type: 'success',
+          text: `⚡ ${res.message} (${res.totalParties} Debtors & ${res.totalItems} Stock Items ready)`
+        });
+        if (onRefreshInvoices) onRefreshInvoices();
+      } else {
+        setMastersNotice({
+          type: 'warning',
+          text: `⚠️ ${res.error || 'Could not fetch from Tally Prime on Port 9000.'}`
+        });
+      }
+    } catch (err) {
+      setMastersNotice({
+        type: 'warning',
+        text: `⚠️ Tally Prime Port 9000 is on standby. Ensure Tally is open.`
+      });
+    } finally {
+      setSyncingMasters(false);
+    }
+  };
+
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      const content = evt.target.result;
+      setImportingXml(true);
+      try {
+        const res = await api.importTallyXml(content);
+        if (res.success) {
+          setMastersNotice({
+            type: 'success',
+            text: `✅ ${res.message}`
+          });
+          if (onRefreshInvoices) onRefreshInvoices();
+        } else {
+          setMastersNotice({
+            type: 'error',
+            text: `❌ ${res.error || 'Failed to parse XML'}`
+          });
+        }
+      } catch (err) {
+        setMastersNotice({
+          type: 'error',
+          text: `❌ Import error: ${err.message}`
+        });
+      } finally {
+        setImportingXml(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const tdlFilePath = 'C:\\Users\\admin\\Downloads\\Projects\\Yamuna Plastics\\tdl\\YamunaPlastics_Sync.tdl';
 
   return (
@@ -228,6 +297,75 @@ export default function TallySync({ invoices, settings, onRefreshInvoices }) {
             }}
           >
             {syncResult.message || syncResult.error}
+          </div>
+        )}
+      </div>
+
+      {/* 2. Masters Sync Card: Sundry Debtors & Stock Items */}
+      <div className="form-card" style={{ border: '2px solid #10b981' }}>
+        <div className="card-title-row">
+          <div className="card-title">
+            <span style={{ color: '#047857' }}>👥 Tally Masters Synchronization (Sundry Debtors &amp; Stock Items)</span>
+          </div>
+          <span style={{ background: '#ecfdf5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
+            Tally Prime Source
+          </span>
+        </div>
+
+        <div style={{ fontSize: '12.5px', color: '#475569', marginBottom: '14px', lineHeight: 1.5 }}>
+          All customer parties and stock items in the billing system are synchronized directly with Tally Prime. Only <strong>Sundry Debtors</strong> and active <strong>Stock Items</strong> are extracted, keeping your billing dropdowns completely clean.
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
+          <div style={{ flex: 1, background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#047857' }}>{parties.length}</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Sundry Debtors (Customers)</div>
+          </div>
+          <div style={{ flex: 1, background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563eb' }}>{items.length}</div>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Stock Items Catalog</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="btn-primary-action"
+            style={{ flex: 1, minWidth: '220px', background: '#059669' }}
+            disabled={syncingMasters}
+            onClick={handleFetchMasters}
+          >
+            {syncingMasters ? '⏳ Pulling Masters from Tally...' : '⚡ Pull Latest Masters from Tally Prime (Port 9000)'}
+          </button>
+
+          <label
+            className="btn-sync-action"
+            style={{ flex: 1, minWidth: '200px', textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+          >
+            {importingXml ? 'Importing XML...' : '📥 Import Masters XML File'}
+            <input
+              type="file"
+              accept=".xml"
+              style={{ display: 'none' }}
+              onChange={handleFileUpload}
+              disabled={importingXml}
+            />
+          </label>
+        </div>
+
+        {mastersNotice && (
+          <div
+            style={{
+              marginTop: '12px',
+              padding: '12px',
+              borderRadius: '10px',
+              fontSize: '12.5px',
+              background: mastersNotice.type === 'success' ? '#dcfce7' : '#fee2e2',
+              color: mastersNotice.type === 'success' ? '#15803d' : '#b91c1c',
+              border: `1px solid ${mastersNotice.type === 'success' ? '#86efac' : '#fca5a5'}`
+            }}
+          >
+            {mastersNotice.text}
           </div>
         )}
       </div>
@@ -438,79 +576,105 @@ export default function TallySync({ invoices, settings, onRefreshInvoices }) {
         )}
       </div>
 
-      {/* 3. Three Methods of Tally Integration Card */}
-      <div className="form-card">
+      {/* 3. Professional Client Integration SOP Card */}
+      <div className="form-card" style={{ background: '#f8fafc', border: '1.5px solid #cbd5e1' }}>
         <div className="card-title-row">
           <div className="card-title">
-            <span>⚙️ 3 Methods to Connect Tally</span>
+            <span>🏢 Client Integration SOP — Professional Step-by-Step Procedure</span>
           </div>
+          <span style={{ background: '#0f172a', color: '#ffffff', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
+            Enterprise SOP
+          </span>
         </div>
 
-        {/* Method 1 */}
-        <div style={{ marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: '#047857', marginBottom: '4px' }}>
-            Method 1: Direct 1-Click Push from Mobile App (Recommended)
-          </div>
-          <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
-            Open Tally Prime with HTTP Server enabled (Port 9000). Click <strong>"Generate & Sync to Tally"</strong> on any bill or <strong>"Sync All to Tally"</strong> in this app. The bill is inserted directly into your Tally Sales Register with zero manual steps!
-          </div>
+        <div style={{ fontSize: '12.5px', color: '#475569', marginBottom: '16px', lineHeight: 1.6 }}>
+          Follow these 4 standard operating procedure (SOP) phases when onboarding or connecting a client PC with Yamuna Plastics Cloud Portal.
         </div>
 
-        {/* Method 2 */}
-        <div style={{ marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: '#0284c7', marginBottom: '4px' }}>
-            Method 2: Inside Tally via Custom Yamuna Plastics TDL Menu
+        {/* Phase 1: Client PC Setup */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ background: '#3b82f6', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 900 }}>1</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a' }}>Phase 1: Client PC Setup (One-Time, 2 Minutes)</strong>
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
-            Load the included TDL file inside Tally Prime. A new <strong>"Yamuna Plastics Mobile Sync"</strong> button will appear right in the Gateway of Tally. Press <strong>'S'</strong> to pull bills automatically over HTTP!
-          </div>
+          <ol style={{ paddingLeft: '24px', fontSize: '12px', color: '#334155', lineHeight: 1.6, margin: 0 }}>
+            <li>
+              <strong>Enable Port 9000 in Tally Prime:</strong> Go to <code>F1: Help</code> &gt; <code>Settings</code> &gt; <code>Connectivity</code> &gt; <code>Client/Server configuration</code>. Set <em>TallyPrime acts as</em> to <strong>Server</strong> (or <strong>Both</strong>) and <em>Port</em> to <strong>9000</strong>. Restart Tally.
+            </li>
+            <li>
+              <strong>Load Single TDL File:</strong> Go to <code>F1: Help</code> &gt; <code>TDLs &amp; Add-Ons</code> &gt; <code>F4: Manage Local TDLs</code>. Set <em>Load selected TDL files on startup</em> to <strong>Yes</strong>.
+            </li>
+            <li>
+              Paste the TDL path:
+              <div
+                style={{
+                  background: '#f1f5f9',
+                  border: '1px solid #e2e8f0',
+                  padding: '6px 10px',
+                  borderRadius: '6px',
+                  fontFamily: 'monospace',
+                  fontSize: '11px',
+                  margin: '6px 0',
+                  userSelect: 'all',
+                  wordBreak: 'break-all'
+                }}
+              >
+                {tdlFilePath}
+              </div>
+            </li>
+            <li>Press <strong>Ctrl + A</strong> to save. Gateway of Tally will now display: <strong>"Yamuna Plastics Mobile Sync" (HotKey: Y)</strong>.</li>
+          </ol>
         </div>
 
-        {/* Method 3 */}
-        <div>
-          <div style={{ fontSize: '13px', fontWeight: 800, color: '#7c3aed', marginBottom: '4px' }}>
-            Method 3: Offline XML File Import
+        {/* Phase 2: Master Sync */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ background: '#10b981', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 900 }}>2</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a' }}>Phase 2: Master Sync (Admin 1-Click Pull)</strong>
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
-            Download the XML file via the button above, then in Tally Prime press <strong>Alt + O (Import) &gt; Transactions</strong>, select the XML file, and all vouchers will be booked.
-          </div>
-        </div>
-      </div>
-
-      {/* 4. How to Load TDL in Tally Prime Quick Cheat-Sheet */}
-      <div className="form-card" style={{ background: '#f8fafc' }}>
-        <div className="card-title-row">
-          <div className="card-title">
-            <span>📖 How to Load TDL in Tally Prime</span>
-          </div>
-        </div>
-
-        <ol style={{ paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: 1.7 }}>
-          <li>Open <strong>Tally Prime</strong> on your computer.</li>
-          <li>Press <strong>F1: Help</strong> (or click Help in the top bar).</li>
-          <li>Click on <strong>TDLs &amp; Add-Ons</strong>.</li>
-          <li>Press <strong>F4: Manage Local TDLs</strong>.</li>
-          <li>Set <strong>Load selected TDL files on startup?</strong> to <strong>Yes</strong>.</li>
-          <li>
-            In File Path, paste the absolute path to your TDL file:
-            <div
-              style={{
-                background: '#e2e8f0',
-                padding: '6px 10px',
-                borderRadius: '6px',
-                fontFamily: 'monospace',
-                fontSize: '11px',
-                margin: '6px 0',
-                userSelect: 'all',
-                wordBreak: 'break-all'
-              }}
-            >
-              {tdlFilePath}
+          <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 6px 0' }}>
+              On this portal (or in the <em>Create New Bill</em> screen), the Admin simply clicks:
+            </p>
+            <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', padding: '8px 12px', borderRadius: '8px', color: '#065f46', fontWeight: 700, display: 'inline-block', marginBottom: '6px' }}>
+              ⚡ Pull Latest Masters from Tally Prime (Port 9000)
             </div>
-          </li>
-          <li>Press <strong>Enter &gt; Accept (Ctrl + A)</strong>.</li>
-          <li>Check Gateway of Tally: You will see <strong>"Yamuna Plastics Mobile Sync"</strong>!</li>
-        </ol>
+            <p style={{ margin: '0', color: '#64748b' }}>
+              The portal queries Tally via Port 9000 and pulls <strong>ONLY Sundry Debtors</strong> and <strong>Stock Items</strong> (with GSTIN, State code, Address, and HSN). Banks, Cash, and Expenses are filtered out automatically.
+            </p>
+          </div>
+        </div>
+
+        {/* Phase 3: Daily Bill Creation */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ background: '#6366f1', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 900 }}>3</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a' }}>Phase 3: Real-Time Sales Bill Generation &amp; 1-Click Push</strong>
+          </div>
+          <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.6 }}>
+            <ul style={{ paddingLeft: '20px', margin: 0 }}>
+              <li>Sales rep creates a tax invoice from any mobile or laptop on <strong>https://yamuna.sanmatisolution.com</strong>.</li>
+              <li>Customer &amp; Product details auto-populate directly from Tally's verified masters.</li>
+              <li>Click <strong>"⚡ Save &amp; Push to Tally (1-Click)"</strong>: The bill is immediately booked into Tally Prime Sales Register with proper CGST/SGST/IGST and vehicle details!</li>
+            </ul>
+          </div>
+        </div>
+
+        {/* Phase 4: Inside Tally Sync */}
+        <div style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ background: '#0284c7', color: '#fff', width: '22px', height: '22px', borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 900 }}>4</span>
+            <strong style={{ fontSize: '13px', color: '#0f172a' }}>Phase 4: Inside-Tally Reconciliation (Accountant 1-Key Pull)</strong>
+          </div>
+          <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.6 }}>
+            If the client's accountant prefers working strictly inside Tally Prime:
+            <ol style={{ paddingLeft: '20px', margin: '6px 0 0 0' }}>
+              <li>In <strong>Gateway of Tally</strong>, press <strong>Y</strong> (Yamuna Plastics Mobile Sync).</li>
+              <li>Press <strong>S</strong> (Sync All Pending Bills from Live Portal).</li>
+              <li>Tally automatically fetches all pending bills over HTTPS and updates the Sales Day Book instantly!</li>
+            </ol>
+          </div>
+        </div>
       </div>
     </div>
   );

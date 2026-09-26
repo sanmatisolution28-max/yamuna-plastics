@@ -362,6 +362,8 @@ export default function App() {
             {activeTab === 'tally' && (
               <TallySync
                 invoices={invoices}
+                parties={parties}
+                items={items}
                 settings={settings}
                 onRefreshInvoices={loadData}
               />
