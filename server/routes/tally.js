@@ -685,4 +685,20 @@ router.post('/sync-all-eway-bills', async (req, res) => {
   }
 });
 
+// 11. Download 1-Click Tally Bridge Scripts & TDL
+router.get('/download-bridge-bat', (req, res) => {
+  const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.bat');
+  res.download(file, 'Yamuna-Tally-Bridge.bat');
+});
+
+router.get('/download-bridge-ps1', (req, res) => {
+  const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.ps1');
+  res.download(file, 'Yamuna-Tally-Bridge.ps1');
+});
+
+router.get('/download-tdl', (req, res) => {
+  const file = path.join(__dirname, '..', '..', 'tdl', 'YamunaPlastics_Sync.tdl');
+  res.download(file, 'YamunaPlastics_Sync.tdl');
+});
+
 export default router;

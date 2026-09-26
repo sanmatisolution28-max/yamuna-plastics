@@ -35,6 +35,31 @@ const xmlDebtorQuery = `<?xml version="1.0" encoding="utf-8"?>
   </BODY>
 </ENVELOPE>`;
 
+const xmlStockQuery = `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Collection</TYPE>
+    <ID>StockCollection</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+      </STATICVARIABLES>
+      <TDL>
+        <TDLMESSAGE>
+          <COLLECTION NAME="StockCollection">
+            <TYPE>StockItem</TYPE>
+            <FETCH>NAME, BASEUNITS, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS, STANDARDCOST, STANDARDPRICE</FETCH>
+          </COLLECTION>
+        </TDLMESSAGE>
+      </TDL>
+    </DESC>
+  </BODY>
+</ENVELOPE>`;
+
 let isSyncing = false;
 
 export async function executeTallySyncCycle() {
@@ -43,29 +68,54 @@ export async function executeTallySyncCycle() {
 
   try {
     // 1. Pull Debtor Masters from local Tally Prime
-    const tallyRes = await fetch(`http://localhost:${TALLY_PORT}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-      body: xmlDebtorQuery,
-      signal: AbortSignal.timeout(6000)
-    });
-
-    if (!tallyRes.ok) {
-      throw new Error(`Local Tally responded with HTTP ${tallyRes.status}`);
+    let debtorXml = '';
+    try {
+      const tallyDebtorRes = await fetch(`http://localhost:${TALLY_PORT}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+        body: xmlDebtorQuery,
+        signal: AbortSignal.timeout(6000)
+      });
+      if (tallyDebtorRes.ok) {
+        debtorXml = await tallyDebtorRes.text();
+      }
+    } catch (dErr) {
+      console.warn('[Bridge Agent] Debtor pull notice:', dErr.message);
     }
 
-    const xml = await tallyRes.text();
+    // 2. Pull Stock Item (Products) Masters from local Tally Prime
+    let stockXml = '';
+    try {
+      const tallyStockRes = await fetch(`http://localhost:${TALLY_PORT}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+        body: xmlStockQuery,
+        signal: AbortSignal.timeout(6000)
+      });
+      if (tallyStockRes.ok) {
+        stockXml = await tallyStockRes.text();
+      }
+    } catch (sErr) {
+      console.warn('[Bridge Agent] Stock Item pull notice:', sErr.message);
+    }
 
-    // 2. Push Debtors to Live Cloud
+    if (!debtorXml && !stockXml) {
+      throw new Error(`Could not connect to Tally Prime on localhost:${TALLY_PORT}. Ensure Tally Prime is open with Connectivity enabled.`);
+    }
+
+    const combinedXml = debtorXml + '\n' + stockXml;
+
+    // 3. Push Debtors and Stock Items to Live Cloud
     const cloudPushRes = await fetch(`${CLOUD_URL}/api/masters/tally-push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-      body: xml,
+      body: combinedXml,
       signal: AbortSignal.timeout(10000)
     });
 
     const pushData = await cloudPushRes.json().catch(() => ({}));
     const totalParties = pushData.partiesCount || 0;
+    const totalItems = pushData.itemsCount || 0;
 
     // 3. Check for any pending bills created on the cloud and post them into local Tally
     let syncedBillsCount = 0;
@@ -117,8 +167,9 @@ export async function executeTallySyncCycle() {
     return {
       success: true,
       totalParties,
+      totalItems,
       syncedBillsCount,
-      message: `Direct Tally Sync Complete: ${totalParties} Customers loaded`
+      message: `Direct Tally Sync Complete: ${totalParties} Customers & ${totalItems} Products loaded!`
     };
   } catch (err) {
     return {

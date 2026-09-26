@@ -222,11 +222,11 @@ export default function TallySync({
         )}
       </div>
 
-      {/* 2. Customer Masters Sync Card */}
+      {/* 2. Customer & Product Masters Sync Card */}
       <div className="form-card" style={{ border: '2px solid #10b981' }}>
         <div className="card-title-row">
           <div className="card-title">
-            <span style={{ color: '#047857' }}>👥 Customer Data Sync (Sundry Debtors from Tally)</span>
+            <span style={{ color: '#047857' }}>👥 Customers &amp; 📦 Products Data Sync (Tally Prime Master Data)</span>
           </div>
           <span style={{ background: '#ecfdf5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
             Tally Prime Source
@@ -234,13 +234,17 @@ export default function TallySync({
         </div>
 
         <div style={{ fontSize: '12.5px', color: '#475569', marginBottom: '14px', lineHeight: 1.5 }}>
-          All customer parties in the billing system are taken directly from Tally Prime. Only <strong>Sundry Debtors</strong> are pulled (with GSTIN, State, Billing Address, and Phone).
+          All customer parties (Sundry Debtors) and product catalog (Stock Items with HSN, GST rate, units &amp; rates) are synchronized directly with Tally Prime.
         </div>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
           <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ fontSize: '26px', fontWeight: 900, color: '#047857' }}>{parties.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Total Customers (Sundry Debtors)</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Sundry Debtors (Customers)</div>
+          </div>
+          <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+            <div style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb' }}>⚡ Ready</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Stock Items (Products)</div>
           </div>
         </div>
 
@@ -252,14 +256,14 @@ export default function TallySync({
             disabled={syncingMasters}
             onClick={handleFetchMasters}
           >
-            {syncingMasters ? '⏳ Pulling Customers from Tally...' : '⚡ Fetch Customers from Tally Prime (Port 9000)'}
+            {syncingMasters ? '⏳ Pulling Masters from Tally...' : '⚡ Sync Customers & Products from Tally'}
           </button>
 
           <label
             className="btn-sync-action"
             style={{ flex: 1, minWidth: '200px', textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            {importingXml ? 'Importing XML...' : '📥 Import Customer XML File'}
+            {importingXml ? 'Importing XML...' : '📥 Import Tally XML File'}
             <input
               type="file"
               accept=".xml"
@@ -287,39 +291,63 @@ export default function TallySync({
         )}
       </div>
 
-      {/* 3. Simple Setup Guide */}
-      <div className="form-card" style={{ background: '#f8fafc' }}>
+      {/* 3. 1-Click Client PC Bridge Connector */}
+      <div className="form-card" style={{ background: '#f0fdf4', border: '1.5px solid #86efac' }}>
         <div className="card-title-row">
           <div className="card-title">
-            <span>📖 How to Connect Tally Prime (3 Easy Steps)</span>
+            <span style={{ color: '#166534' }}>🚀 1-Click Real-Time Tally Bridge (For Client PC)</span>
           </div>
         </div>
 
-        <ol style={{ paddingLeft: '20px', fontSize: '12.5px', color: '#334155', lineHeight: 1.8, margin: 0 }}>
-          <li>
-            <strong>Enable Port 9000 in Tally:</strong> Go to <code>F1: Help</code> &gt; <code>Settings</code> &gt; <code>Connectivity</code> &gt; <code>Client/Server configuration</code>. Set <em>TallyPrime acts as</em> to <strong>Server</strong> (or <strong>Both</strong>) and <em>Port</em> to <strong>9000</strong>. Restart Tally.
-          </li>
-          <li>
-            <strong>Load TDL File:</strong> Go to <code>F1: Help</code> &gt; <code>TDLs &amp; Add-Ons</code> &gt; <code>F4: Manage Local TDLs</code>. Set <em>Load selected TDL files on startup</em> to <strong>Yes</strong>, and paste the TDL file path:
-            <div
-              style={{
-                background: '#e2e8f0',
-                padding: '6px 10px',
-                borderRadius: '6px',
-                fontFamily: 'monospace',
-                fontSize: '11px',
-                margin: '6px 0',
-                userSelect: 'all',
-                wordBreak: 'break-all'
-              }}
-            >
-              {tdlFilePath}
-            </div>
-          </li>
-          <li>
-            <strong>Sync from Inside Tally:</strong> In Gateway of Tally, press <strong>Y</strong> (Yamuna Plastics Mobile Sync) &gt; press <strong>S</strong> (Sync All Pending Bills from Live Portal). All bills will immediately import into your Sales Day Book!
-          </li>
-        </ol>
+        <div style={{ fontSize: '12.5px', color: '#14532d', lineHeight: 1.6, marginBottom: '14px' }}>
+          To enable <strong>instant automatic sync</strong> on any client PC with Tally Prime open (Port 9000), download and run the 1-Click Bridge. It connects the local Tally Prime with the cloud portal in real time without any setup!
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <a
+            href="/api/tally/download-bridge-bat"
+            download="Yamuna-Tally-Bridge.bat"
+            className="btn-primary-action"
+            style={{ textDecoration: 'none', background: '#16a34a', flex: 1, minWidth: '220px', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          >
+            <span>⬇️ Download 1-Click Bridge (.bat)</span>
+          </a>
+
+          <a
+            href="/api/tally/download-tdl"
+            download="YamunaPlastics_Sync.tdl"
+            className="btn-sync-action"
+            style={{ textDecoration: 'none', flex: 1, minWidth: '200px', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+          >
+            <span>📄 Download Tally TDL File</span>
+          </a>
+        </div>
+      </div>
+
+      {/* 4. Simple Setup Guide */}
+      <div className="form-card" style={{ background: '#f8fafc' }}>
+        <div className="card-title-row">
+          <div className="card-title">
+            <span>📖 How to Connect Client Tally Prime (3 Easy Options)</span>
+          </div>
+        </div>
+
+        <div style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.8 }}>
+          <p style={{ margin: '0 0 8px' }}>
+            <strong>Step 1: Enable Connectivity in Tally Prime:</strong><br />
+            In Tally Prime, press <code>F1: Help</code> &gt; <code>Settings</code> &gt; <code>Connectivity</code> &gt; <code>Client/Server configuration</code>.<br />
+            Set <em>TallyPrime acts as</em> to <strong>Both</strong> and <em>Port</em> to <strong>9000</strong>. (Restart Tally once).
+          </p>
+
+          <p style={{ margin: '0 0 8px' }}>
+            <strong>Step 2: Choose your preferred sync method:</strong>
+          </p>
+          <ul style={{ margin: '0 0 8px', paddingLeft: '20px' }}>
+            <li><strong>Method A (Automatic):</strong> Double-click the downloaded <code>Yamuna-Tally-Bridge.bat</code>. It runs quietly and keeps Customers, Products, and Invoices 100% in sync automatically.</li>
+            <li><strong>Method B (In-Tally Button):</strong> Load <code>YamunaPlastics_Sync.tdl</code> under <code>F1 &gt; TDLs &amp; Add-ons &gt; F4</code>. A button <em>"Sync with Yamuna Cloud"</em> will appear on the Gateway of Tally.</li>
+            <li><strong>Method C (1-Second File Import):</strong> In Tally Prime, press <code>Alt + E</code> &gt; <code>Masters</code> &gt; <code>Export (XML)</code> and click <em>"Import Tally XML File"</em> above.</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

@@ -228,7 +228,8 @@ export const api = {
             return {
               success: true,
               message: statusData.result?.message || 'Tally Masters & Bills synchronized directly with Tally Prime!',
-              totalParties: statusData.result?.totalParties
+              totalParties: statusData.result?.totalParties,
+              totalItems: statusData.result?.totalItems
             };
           } else if (statusData.status === 'FAILED') {
             throw new Error(statusData.error || 'Tally rejected synchronization request.');
