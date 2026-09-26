@@ -39,6 +39,22 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Serve static client build in production
+const clientDistPath = path.join(__dirname, '../client/dist');
+app.use(express.static(clientDistPath));
+
+// For SPA routing: any non-API route returns index.html
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(clientDistPath, 'index.html'), (err) => {
+    if (err) {
+      res.status(200).send('Yamuna Plastics API Server is online. Please build client (npm run build).');
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`=======================================================`);
   console.log(`🚀 Yamuna Plastics API Server running on port ${PORT}`);
