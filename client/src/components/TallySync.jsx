@@ -42,24 +42,19 @@ export default function TallySync({
     setSyncingAll(true);
     setSyncResult(null);
     try {
-      const res = await api.syncAllToTally();
       const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
-      if (!res.success && isCloud) {
-        setSyncResult({
-          success: false,
-          message: '💡 Cloud Portal: Tally Prime is installed on your local PC. Double-click "Sync_Tally_to_Cloud.bat" on your computer to sync bills directly into Tally Prime, or open http://localhost:5005.'
-        });
+      let res;
+      if (isCloud) {
+        res = await api.triggerUniversalTallySync();
       } else {
-        setSyncResult(res);
+        res = await api.syncAllToTally();
       }
+      setSyncResult(res);
       if (onRefreshInvoices) onRefreshInvoices();
     } catch (err) {
-      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setSyncResult({
         success: false,
-        message: isCloud
-          ? '💡 Cloud Portal: Tally Prime is installed on your local PC. Double-click "Sync_Tally_to_Cloud.bat" on your computer to sync bills directly into Tally Prime, or open http://localhost:5005.'
-          : (err.message || 'Tally sync failed. Please check if Tally Prime is running on port 9000.')
+        message: err.message || 'Tally sync failed. Please check if Tally Prime is running on port 9000.'
       });
     } finally {
       setSyncingAll(false);
@@ -70,29 +65,23 @@ export default function TallySync({
     setSyncingMasters(true);
     setMastersNotice(null);
     try {
-      const res = await api.fetchMastersFromTally();
+      const res = await api.triggerUniversalTallySync();
       if (res.success) {
         setMastersNotice({
           type: 'success',
-          text: `⚡ ${res.message} (${res.totalParties} Customers loaded)`
+          text: `⚡ ${res.message || 'Customer Debtors loaded from Tally Prime!'} (${res.totalParties || parties.length} Customers)`
         });
         if (onRefreshInvoices) onRefreshInvoices();
       } else {
-        const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         setMastersNotice({
           type: 'warning',
-          text: isCloud
-            ? `💡 Cloud Portal Note: Tally Prime is running on your local computer. To sync with this live cloud website, double-click "Sync_Tally_to_Cloud.bat" on your PC, or open http://localhost:5005.`
-            : `⚠️ ${res.error || 'Could not fetch from Tally Prime on Port 9000.'}`
+          text: res.error || 'Could not fetch from Tally Prime on Port 9000.'
         });
       }
     } catch (err) {
-      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setMastersNotice({
         type: 'warning',
-        text: isCloud
-          ? `💡 Cloud Portal Note: Tally Prime is on your local PC. Double-click "Sync_Tally_to_Cloud.bat" on your computer to push customers to the live portal, or open http://localhost:5005.`
-          : `⚠️ Tally Prime Port 9000 is on standby. Ensure Tally is open.`
+        text: err.message || '⚠️ Tally Prime connection timed out. Ensure Tally Prime is open on your PC.'
       });
     } finally {
       setSyncingMasters(false);

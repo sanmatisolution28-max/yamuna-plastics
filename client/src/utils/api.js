@@ -193,5 +193,62 @@ export const api = {
       throw new Error(data.error || 'Failed to fetch masters from Tally');
     }
     return data;
+  },
+
+  // 1-Click Universal Tally Sync (works seamlessly both on local PC and live cloud)
+  triggerUniversalTallySync: async () => {
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    if (isLocal) {
+      return api.fetchMastersFromTally();
+    }
+
+    // Trigger Cloud Bridge Command
+    const triggerRes = await fetch(`${API_BASE}/bridge/trigger`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'SYNC_ALL' })
+    });
+
+    if (!triggerRes.ok) {
+      throw new Error('Failed to initiate sync request with Tally Bridge.');
+    }
+
+    const triggerData = await triggerRes.json();
+    const commandId = triggerData.commandId;
+
+    // Poll for local PC agent to complete the sync (up to 14 seconds)
+    const startTime = Date.now();
+    while (Date.now() - startTime < 14000) {
+      await new Promise((r) => setTimeout(r, 800));
+      try {
+        const statusRes = await fetch(`${API_BASE}/bridge/status/${commandId}`);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          if (statusData.status === 'COMPLETED') {
+            return {
+              success: true,
+              message: statusData.result?.message || 'Tally Masters & Bills synchronized directly with Tally Prime!',
+              totalParties: statusData.result?.totalParties
+            };
+          } else if (statusData.status === 'FAILED') {
+            throw new Error(statusData.error || 'Tally rejected synchronization request.');
+          }
+        }
+      } catch (pollErr) {
+        if (pollErr.message && !pollErr.message.includes('fetch')) throw pollErr;
+      }
+    }
+
+    // Direct loopback fallback to local agent port with Private Network Access
+    try {
+      const directRes = await fetch('http://127.0.0.1:5005/api/masters/fetch-from-tally', {
+        method: 'POST',
+        signal: AbortSignal.timeout(3000)
+      });
+      const directData = await directRes.json();
+      if (directData.success) return directData;
+    } catch {}
+
+    throw new Error('Tally Prime connection timed out. Ensure Tally Prime is open on your PC.');
   }
 };

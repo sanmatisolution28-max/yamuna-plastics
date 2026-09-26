@@ -11,7 +11,7 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 const router = express.Router();
 
-async function readInvoices() {
+export async function readInvoices() {
   try {
     const raw = await fs.readFile(INVOICES_FILE, 'utf8');
     return JSON.parse(raw);
@@ -20,7 +20,7 @@ async function readInvoices() {
   }
 }
 
-async function writeInvoices(data) {
+export async function writeInvoices(data) {
   await fs.writeFile(INVOICES_FILE, JSON.stringify(data, null, 2), 'utf8');
 }
 

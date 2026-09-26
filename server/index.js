@@ -7,6 +7,8 @@ import invoicesRouter from './routes/invoices.js';
 import tallyRouter from './routes/tally.js';
 import mastersRouter from './routes/masters.js';
 import authRouter from './routes/auth.js';
+import bridgeRouter from './routes/bridge.js';
+import { startCloudBridgeAgent } from './services/cloudBridgeAgent.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +16,17 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5005;
 
-// Middleware
+// Middleware with Private Network Access (PNA) support for direct browser-to-local communication
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Private-Network', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
@@ -29,6 +41,7 @@ app.use((req, res, next) => {
 app.use('/api/auth', authRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/tally', tallyRouter);
+app.use('/api/bridge', bridgeRouter);
 app.use('/api', mastersRouter);
 
 // Health check endpoint
@@ -64,4 +77,7 @@ app.listen(PORT, () => {
   console.log(`📦 Tally XML Export: http://localhost:${PORT}/api/tally/export-xml`);
   console.log(`🔌 Tally Sync Status:http://localhost:${PORT}/api/tally/status`);
   console.log(`=======================================================`);
+
+  // Start background real-time sync bridge for 1-click cloud sync
+  startCloudBridgeAgent();
 });

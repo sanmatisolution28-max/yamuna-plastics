@@ -70,31 +70,28 @@ export default function PartyMaster({ parties = [], onPartyAdded, onRefresh, onS
     }
   };
 
-  // Direct fetch from local Tally Prime Port 9000
+  // Direct 1-click fetch from Tally Prime
   const handleFetchFromTally = async () => {
     setFetchingTally(true);
     setStatusNotice(null);
     try {
-      const res = await api.fetchMastersFromTally();
+      const res = await api.triggerUniversalTallySync();
       if (res.success) {
-        setStatusNotice({ type: 'success', text: `⚡ ${res.message} (${res.totalParties} customers ready)` });
+        setStatusNotice({
+          type: 'success',
+          text: `⚡ ${res.message || 'Customers updated from Tally Prime!'} (${res.totalParties || parties.length} customers ready)`
+        });
         if (onRefresh) onRefresh();
       } else {
-        const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         setStatusNotice({
           type: 'warning',
-          text: isCloud
-            ? '💡 Cloud Tip: Run "Sync_Tally_to_Cloud.bat" on your PC to push customers from Tally Prime to this live portal.'
-            : (res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.')
+          text: res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.'
         });
       }
     } catch (err) {
-      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setStatusNotice({
         type: 'warning',
-        text: isCloud
-          ? '💡 Cloud Tip: Run "Sync_Tally_to_Cloud.bat" on your PC to push customers from Tally Prime to this live portal.'
-          : '⚠️ Tally Prime Port 9000 is on standby. All saved customers remain available.'
+        text: err.message || '⚠️ Tally Prime connection timed out. Ensure Tally Prime is running on your PC.'
       });
     } finally {
       setFetchingTally(false);

@@ -90,34 +90,28 @@ export default function BillForm({
     );
   });
 
-  // Fetch live masters from Tally directly
+  // Fetch live masters from Tally directly (1-click from software)
   const handleSyncFromTally = async () => {
     setSyncingTally(true);
     setTallyNotice(null);
     try {
-      const res = await api.fetchMastersFromTally();
+      const res = await api.triggerUniversalTallySync();
       if (res.success) {
         setTallyNotice({
           type: 'success',
-          text: `✅ ${res.message} (${res.totalParties} Customers ready)`
+          text: `✅ ${res.message || 'Customer Debtors synced from Tally Prime!'} (${res.totalParties || parties.length} Customers ready)`
         });
         if (onRefresh) await onRefresh();
       } else {
-        const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
         setTallyNotice({
           type: 'warning',
-          text: isCloud
-            ? '💡 Cloud Note: To push Tally data to this live portal, double-click "Sync_Tally_to_Cloud.bat" on your PC.'
-            : (res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.')
+          text: res.error || 'Could not fetch from Tally. Make sure Tally Prime is open on Port 9000.'
         });
       }
     } catch (err) {
-      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setTallyNotice({
         type: 'warning',
-        text: isCloud
-          ? '💡 Cloud Note: To push Tally data to this live portal, double-click "Sync_Tally_to_Cloud.bat" on your PC.'
-          : 'Tally Prime on Port 9000 is on standby. All saved masters remain ready.'
+        text: err.message || 'Could not connect to Tally Prime. Ensure Tally Prime is open on your PC.'
       });
     } finally {
       setSyncingTally(false);
