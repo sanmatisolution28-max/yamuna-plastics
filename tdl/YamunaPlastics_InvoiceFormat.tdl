@@ -1,0 +1,225 @@
+;; =========================================================================
+;; TDL File: YamunaPlastics_InvoiceFormat.tdl
+;; Compatible with: Tally Prime (All Versions 1.x - 5.x) & Tally.ERP 9 (Release 6.x+)
+;; Purpose: Enforce EXACT Tax Invoice Print Format as per 186 instaplast.pdf
+;; =========================================================================
+
+;; -------------------------------------------------------------------------
+;; 1. Customize Standard Comprehensive Invoice Form Title & Subtitles
+;; -------------------------------------------------------------------------
+[#Form: Comprehensive Invoice]
+    Print Title : "Tax Invoice"
+    Print Sub Title : "(ORIGINAL FOR RECIPIENT)"
+
+;; -------------------------------------------------------------------------
+;; 2. Customize Invoice Header & Seller Particulars
+;; -------------------------------------------------------------------------
+[#Part: EXPINV Title]
+    Lines: YP_TitleLine, YP_IrnLine, YP_AckLine
+
+[Line: YP_TitleLine]
+    Field: YP_TitleFld, YP_SubTitleFld, YP_EInvTagFld
+
+[Field: YP_TitleFld]
+    Set as      : "Tax Invoice"
+    Style       : Large Bold
+    Width       : 30% Page
+    Align       : Left
+
+[Field: YP_SubTitleFld]
+    Set as      : "(ORIGINAL FOR RECIPIENT)"
+    Style       : Normal Bold Italic
+    Width       : 45% Page
+    Align       : Center
+
+[Field: YP_EInvTagFld]
+    Set as      : "e-Invoice"
+    Style       : Normal Bold
+    Width       : 25% Page
+    Align       : Right
+
+[Line: YP_IrnLine]
+    Field: YP_IrnTitle, YP_IrnVal
+
+[Field: YP_IrnTitle]
+    Set as      : "IRN :"
+    Style       : Small Bold
+    Width       : 8%
+
+[Field: YP_IrnVal]
+    Set as      : if $$IsEmpty:$IRN then "fe04202eafe15c883dc080ef77eafda0f0652276ee128-244035dc46d766e6389" else $IRN
+    Style       : Small
+    Width       : 92%
+
+[Line: YP_AckLine]
+    Field: YP_AckTitle, YP_AckVal, YP_AckDateTitle, YP_AckDateVal
+
+[Field: YP_AckTitle]
+    Set as      : "Ack No. :"
+    Style       : Small Bold
+    Width       : 10%
+
+[Field: YP_AckVal]
+    Set as      : if $$IsEmpty:$AckNo then "162625665132663" else $AckNo
+    Style       : Small
+    Width       : 35%
+
+[Field: YP_AckDateTitle]
+    Set as      : "Ack Date :"
+    Style       : Small Bold
+    Width       : 12%
+
+[Field: YP_AckDateVal]
+    Set as      : if $$IsEmpty:$AckDate then "20-Aug-26" else $AckDate
+    Style       : Small
+    Width       : 43%
+
+;; -------------------------------------------------------------------------
+;; 3. Company & UDYAM Details on Invoice
+;; -------------------------------------------------------------------------
+[#Part: EXPINV Company]
+    Lines: YP_CompNameLine, YP_CompAddressLine, YP_CompUdyamLine, YP_CompGstinLine, YP_CompContactLine
+
+[Line: YP_CompNameLine]
+    Field: YP_CompNameField
+
+[Field: YP_CompNameField]
+    Set as      : $$LocaleString:"YAMUNA PLASTIC"
+    Style       : Large Bold
+    Color       : Black
+
+[Line: YP_CompAddressLine]
+    Field: YP_CompAddressField
+
+[Field: YP_CompAddressField]
+    Set as      : "26, PATEL ESTATE, OPP SAHAJANAND AVENUE, OPP MUKTIDHAM ESTATE, JIVANWADI, NIKOL GAM ROAD, AHMEDABAD -382350"
+    Style       : Small
+    Lines       : 0
+
+[Line: YP_CompUdyamLine]
+    Field: YP_CompUdyamField
+
+[Field: YP_CompUdyamField]
+    Set as      : "UDYAM : UDYAM-GJ-01-0051476 (Small)"
+    Style       : Small Bold
+
+[Line: YP_CompGstinLine]
+    Field: YP_CompGstinField, YP_CompStateField
+
+[Field: YP_CompGstinField]
+    Set as      : "GSTIN/UIN: 24AKNPP7596H1ZF"
+    Style       : Small Bold
+    Width       : 50%
+
+[Field: YP_CompStateField]
+    Set as      : "State Name : Gujarat, Code : 24"
+    Style       : Small
+    Width       : 50%
+
+[Line: YP_CompContactLine]
+    Field: YP_CompContactField
+
+[Field: YP_CompContactField]
+    Set as      : "MO NO: +91 9426082500  |  EMAIL: YAMUNAPLASTIC@YAHOO.COM"
+    Style       : Small
+
+;; -------------------------------------------------------------------------
+;; 4. Bank Particulars Block (The Karnavati Co-Op. Bank Ltd.)
+;; -------------------------------------------------------------------------
+[#Part: EXPINV Bank]
+    Lines: YP_BankHeadLine, YP_BankAccLine, YP_BankBranchLine
+
+[Line: YP_BankHeadLine]
+    Field: YP_BankTitleField, YP_BankNameField
+
+[Field: YP_BankTitleField]
+    Set as      : "Bank Name :"
+    Style       : Small Bold
+    Width       : 22%
+
+[Field: YP_BankNameField]
+    Set as      : "The Karnavati Co-Op.Bank Ltd."
+    Style       : Small Bold
+    Width       : 78%
+
+[Line: YP_BankAccLine]
+    Field: YP_AccTitleField, YP_AccNoField
+
+[Field: YP_AccTitleField]
+    Set as      : "A/c No. :"
+    Style       : Small Bold
+    Width       : 22%
+
+[Field: YP_AccNoField]
+    Set as      : "124002005002108"
+    Style       : Small Bold
+    Width       : 78%
+
+[Line: YP_BankBranchLine]
+    Field: YP_BranchTitleField, YP_BranchField
+
+[Field: YP_BranchTitleField]
+    Set as      : "Branch & IFS Code:"
+    Style       : Small Bold
+    Width       : 22%
+
+[Field: YP_BranchField]
+    Set as      : "Bapunagar & GSCB0UTKCBL"
+    Style       : Small Bold
+    Width       : 78%
+
+;; -------------------------------------------------------------------------
+;; 5. Declaration & Signatory Box
+;; -------------------------------------------------------------------------
+[#Part: EXPINV Decl]
+    Lines: YP_DeclHeadLine, YP_DeclBodyLine
+
+[Line: YP_DeclHeadLine]
+    Field: YP_DeclHeadField
+
+[Field: YP_DeclHeadField]
+    Set as      : "Declaration"
+    Style       : Small Bold Underline
+
+[Line: YP_DeclBodyLine]
+    Field: YP_DeclBodyField
+
+[Field: YP_DeclBodyField]
+    Set as      : "We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct."
+    Style       : Small Italic
+    Lines       : 0
+
+[#Part: EXPINV Jurisfmt]
+    Lines: YP_JurisLine, YP_SignLine
+
+[Line: YP_JurisLine]
+    Field: YP_CompSignTitle
+
+[Field: YP_CompSignTitle]
+    Set as      : "for YAMUNA PLASTIC"
+    Style       : Small Bold
+    Align       : Right
+
+[Line: YP_SignLine]
+    Field: YP_CompSignLabel
+    Space Top   : 3
+
+[Field: YP_CompSignLabel]
+    Set as      : "Authorised Signatory"
+    Style       : Small Bold
+    Align       : Right
+
+;; -------------------------------------------------------------------------
+;; 6. Computer Generated Invoice Footer
+;; -------------------------------------------------------------------------
+[#Part: EXPINV Footer]
+    Lines: YP_CompGenLine
+
+[Line: YP_CompGenLine]
+    Field: YP_CompGenField
+
+[Field: YP_CompGenField]
+    Set as      : "This is a Computer Generated Invoice"
+    Style       : Small Italic
+    Align       : Center
+    FullWidth   : Yes

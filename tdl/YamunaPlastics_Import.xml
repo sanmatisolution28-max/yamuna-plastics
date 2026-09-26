@@ -1,0 +1,450 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>Yamuna Plastics Pvt. Ltd.</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Sales - Plastic Goods (18%)" ACTION="Create">
+            <NAME>Sales - Plastic Goods (18%)</NAME>
+            <PARENT>Sales Accounts</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Interstate Sales - Plastic Goods (18%)" ACTION="Create">
+            <NAME>Interstate Sales - Plastic Goods (18%)</NAME>
+            <PARENT>Sales Accounts</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Output CGST 9%" ACTION="Create">
+            <NAME>Output CGST 9%</NAME>
+            <PARENT>Duties &amp; Taxes</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Output SGST 9%" ACTION="Create">
+            <NAME>Output SGST 9%</NAME>
+            <PARENT>Duties &amp; Taxes</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Output IGST 18%" ACTION="Create">
+            <NAME>Output IGST 18%</NAME>
+            <PARENT>Duties &amp; Taxes</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Round Off" ACTION="Create">
+            <NAME>Round Off</NAME>
+            <PARENT>Indirect Incomes</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Freight &amp; Delivery Charges" ACTION="Create">
+            <NAME>Freight &amp; Delivery Charges</NAME>
+            <PARENT>Direct Incomes</PARENT>
+            <ISBILLWISEON>No</ISBILLWISEON>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Gujarat Agro Chemical Industries Ltd." ACTION="Create">
+            <NAME>Gujarat Agro Chemical Industries Ltd.</NAME>
+            <PARENT>Sundry Debtors</PARENT>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+            <STATENAME>Gujarat</STATENAME>
+            <PARTYGSTIN>24AABCG9821E1ZQ</PARTYGSTIN>
+            <ADDRESS.LIST>
+              <ADDRESS>Plot 4201, GIDC Estate, Ankleshwar</ADDRESS>
+            </ADDRESS.LIST>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Surat Textile &amp; Poly-Pack Traders" ACTION="Create">
+            <NAME>Surat Textile &amp; Poly-Pack Traders</NAME>
+            <PARENT>Sundry Debtors</PARENT>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+            <STATENAME>Gujarat</STATENAME>
+            <PARTYGSTIN>24AARTS4512D1ZR</PARTYGSTIN>
+            <ADDRESS.LIST>
+              <ADDRESS>Shop 12-14, Millennium Textile Market, Ring Road, Surat</ADDRESS>
+            </ADDRESS.LIST>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Maharani Seeds &amp; Fertilizer Corp." ACTION="Create">
+            <NAME>Maharani Seeds &amp; Fertilizer Corp.</NAME>
+            <PARENT>Sundry Debtors</PARENT>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+            <STATENAME>Rajasthan</STATENAME>
+            <PARTYGSTIN>08AAAFM5514P1Z3</PARTYGSTIN>
+            <ADDRESS.LIST>
+              <ADDRESS>Industrial Area, Sukher Road, Udaipur</ADDRESS>
+            </ADDRESS.LIST>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="Balaji Polymers &amp; Exports Pvt. Ltd." ACTION="Create">
+            <NAME>Balaji Polymers &amp; Exports Pvt. Ltd.</NAME>
+            <PARENT>Sundry Debtors</PARENT>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+            <STATENAME>Maharashtra</STATENAME>
+            <PARTYGSTIN>27AABCB8819Q1ZN</PARTYGSTIN>
+            <ADDRESS.LIST>
+              <ADDRESS>Unit 4B, MIDC Industrial Area, Tarapur, Boisar</ADDRESS>
+            </ADDRESS.LIST>
+          </LEDGER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="HDPE Plain Liner Bags (50 Micron)" ACTION="Create">
+            <NAME>HDPE Plain Liner Bags (50 Micron)</NAME>
+            <BASEUNITS>KGS</BASEUNITS>
+            <HSNCODE>39232100</HSNCODE>
+            <OPENINGBALANCE>0 KGS</OPENINGBALANCE>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="PP Woven Sacks with Liner (50kg capacity)" ACTION="Create">
+            <NAME>PP Woven Sacks with Liner (50kg capacity)</NAME>
+            <BASEUNITS>BAGS</BASEUNITS>
+            <HSNCODE>63053300</HSNCODE>
+            <OPENINGBALANCE>0 BAGS</OPENINGBALANCE>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="LDPE Heavy Duty Packing Rolls (100 Micron)" ACTION="Create">
+            <NAME>LDPE Heavy Duty Packing Rolls (100 Micron)</NAME>
+            <BASEUNITS>KGS</BASEUNITS>
+            <HSNCODE>39201019</HSNCODE>
+            <OPENINGBALANCE>0 KGS</OPENINGBALANCE>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="Black UV Agriculture Mulch Film (25 Micron)" ACTION="Create">
+            <NAME>Black UV Agriculture Mulch Film (25 Micron)</NAME>
+            <BASEUNITS>ROLLS</BASEUNITS>
+            <HSNCODE>39201099</HSNCODE>
+            <OPENINGBALANCE>0 ROLLS</OPENINGBALANCE>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <STOCKITEM NAME="Virgin HDPE Blow Moulding Granules" ACTION="Create">
+            <NAME>Virgin HDPE Blow Moulding Granules</NAME>
+            <BASEUNITS>KGS</BASEUNITS>
+            <HSNCODE>39012000</HSNCODE>
+            <OPENINGBALANCE>0 KGS</OPENINGBALANCE>
+          </STOCKITEM>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20260922</DATE>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>YP/26-27/101</VOUCHERNUMBER>
+            <REFERENCE>YP/26-27/101</REFERENCE>
+            <PARTYLEDGERNAME>Gujarat Agro Chemical Industries Ltd.</PARTYLEDGERNAME>
+            <PARTYNAME>Gujarat Agro Chemical Industries Ltd.</PARTYNAME>
+            <BASICBUYERNAME>Gujarat Agro Chemical Industries Ltd.</BASICBUYERNAME>
+            <BASICBASEPARTYNAME>Gujarat Agro Chemical Industries Ltd.</BASICBASEPARTYNAME>
+            <STATENAME>Gujarat</STATENAME>
+            <PLACEOFSUPPLY>Gujarat</PLACEOFSUPPLY>
+            <PARTYGSTIN>24AABCG9821E1ZQ</PARTYGSTIN>
+            <PARTYMAILINGNAME>Gujarat Agro Chemical Industries Ltd.</PARTYMAILINGNAME>
+            <CONSIGNEEMAILINGNAME>Gujarat Agro Chemical Industries Ltd.</CONSIGNEEMAILINGNAME>
+            <ADDRESS.LIST>
+              <ADDRESS>Plot 4201, GIDC Estate, Ankleshwar</ADDRESS>
+            </ADDRESS.LIST>
+            <ISINVOICE>Yes</ISINVOICE>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+            <NARRATION>Yamuna Plastics Mobile App Bill #YP/26-27/101. Vehicle: GJ-16-AX-8910. Transporter: Patel Freight Carriers. Payment: Credit 30 Days. Notes: Materials inspected and delivered at Ankleshwar GIDC warehouse.</NARRATION>
+
+            <!-- 1. Party / Sundry Debtor Ledger (Debit in Sales) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Gujarat Agro Chemical Industries Ltd.</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-121820.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>YP/26-27/101</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-121820.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>HDPE Plain Liner Bags (50 Micron)</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>132.00/KGS</RATE>
+              <ACTUALQTY> 500.00 KGS</ACTUALQTY>
+              <BILLEDQTY> 500.00 KGS</BILLEDQTY>
+              <AMOUNT>66000.00</AMOUNT>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales - Plastic Goods (18%)</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>66000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>PP Woven Sacks with Liner (50kg capacity)</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>18.50/BAGS</RATE>
+              <ACTUALQTY> 2000.00 BAGS</ACTUALQTY>
+              <BILLEDQTY> 2000.00 BAGS</BILLEDQTY>
+              <AMOUNT>37000.00</AMOUNT>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales - Plastic Goods (18%)</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>37000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Output CGST 9%</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>8160.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Output SGST 9%</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>8160.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Freight &amp; Delivery Charges</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>2500.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20260923</DATE>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>YP/26-27/102</VOUCHERNUMBER>
+            <REFERENCE>YP/26-27/102</REFERENCE>
+            <PARTYLEDGERNAME>Surat Textile &amp; Poly-Pack Traders</PARTYLEDGERNAME>
+            <PARTYNAME>Surat Textile &amp; Poly-Pack Traders</PARTYNAME>
+            <BASICBUYERNAME>Surat Textile &amp; Poly-Pack Traders</BASICBUYERNAME>
+            <BASICBASEPARTYNAME>Surat Textile &amp; Poly-Pack Traders</BASICBASEPARTYNAME>
+            <STATENAME>Gujarat</STATENAME>
+            <PLACEOFSUPPLY>Gujarat</PLACEOFSUPPLY>
+            <PARTYGSTIN>24AARTS4512D1ZR</PARTYGSTIN>
+            <PARTYMAILINGNAME>Surat Textile &amp; Poly-Pack Traders</PARTYMAILINGNAME>
+            <CONSIGNEEMAILINGNAME>Surat Textile &amp; Poly-Pack Traders</CONSIGNEEMAILINGNAME>
+            <ADDRESS.LIST>
+              <ADDRESS>Shop 12-14, Millennium Textile Market, Ring Road, Surat</ADDRESS>
+            </ADDRESS.LIST>
+            <ISINVOICE>Yes</ISINVOICE>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+            <NARRATION>Yamuna Plastics Mobile App Bill #YP/26-27/102. Vehicle: GJ-05-BZ-4112. Transporter: Surat Express Logistics. Payment: Credit 15 Days. Notes: Textile packing roll supply batch #712.</NARRATION>
+
+            <!-- 1. Party / Sundry Debtor Ledger (Debit in Sales) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Surat Textile &amp; Poly-Pack Traders</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-59888.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>YP/26-27/102</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-59888.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>LDPE Heavy Duty Packing Rolls (100 Micron)</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>145.00/KGS</RATE>
+              <ACTUALQTY> 350.00 KGS</ACTUALQTY>
+              <BILLEDQTY> 350.00 KGS</BILLEDQTY>
+              <AMOUNT>49735.00</AMOUNT>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Sales - Plastic Goods (18%)</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>49735.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Output CGST 9%</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>4476.15</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Output SGST 9%</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>4476.15</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Freight &amp; Delivery Charges</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>1200.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Round Off</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>0.70</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20260924</DATE>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>YP/26-27/103</VOUCHERNUMBER>
+            <REFERENCE>YP/26-27/103</REFERENCE>
+            <PARTYLEDGERNAME>Maharani Seeds &amp; Fertilizer Corp.</PARTYLEDGERNAME>
+            <PARTYNAME>Maharani Seeds &amp; Fertilizer Corp.</PARTYNAME>
+            <BASICBUYERNAME>Maharani Seeds &amp; Fertilizer Corp.</BASICBUYERNAME>
+            <BASICBASEPARTYNAME>Maharani Seeds &amp; Fertilizer Corp.</BASICBASEPARTYNAME>
+            <STATENAME>Rajasthan</STATENAME>
+            <PLACEOFSUPPLY>Rajasthan</PLACEOFSUPPLY>
+            <PARTYGSTIN>08AAAFM5514P1Z3</PARTYGSTIN>
+            <PARTYMAILINGNAME>Maharani Seeds &amp; Fertilizer Corp.</PARTYMAILINGNAME>
+            <CONSIGNEEMAILINGNAME>Maharani Seeds &amp; Fertilizer Corp.</CONSIGNEEMAILINGNAME>
+            <ADDRESS.LIST>
+              <ADDRESS>Industrial Area, Sukher Road, Udaipur</ADDRESS>
+            </ADDRESS.LIST>
+            <ISINVOICE>Yes</ISINVOICE>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+            <NARRATION>Yamuna Plastics Mobile App Bill #YP/26-27/103. Vehicle: RJ-27-GA-6543. Transporter: Marwar Goods Transport. Payment: NEFT / Advance. Notes: Inter-state supply against Purchase Order MSFC/PO/26/901.</NARRATION>
+
+            <!-- 1. Party / Sundry Debtor Ledger (Debit in Sales) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Maharani Seeds &amp; Fertilizer Corp.</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-92990.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>YP/26-27/103</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-92990.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Black UV Agriculture Mulch Film (25 Micron)</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>1650.00/ROLLS</RATE>
+              <ACTUALQTY> 30.00 ROLLS</ACTUALQTY>
+              <BILLEDQTY> 30.00 ROLLS</BILLEDQTY>
+              <AMOUNT>49500.00</AMOUNT>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Interstate Sales - Plastic Goods (18%)</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>49500.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>PP Woven Sacks with Liner (50kg capacity)</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>18.50/BAGS</RATE>
+              <ACTUALQTY> 1500.00 BAGS</ACTUALQTY>
+              <BILLEDQTY> 1500.00 BAGS</BILLEDQTY>
+              <AMOUNT>27750.00</AMOUNT>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Interstate Sales - Plastic Goods (18%)</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>27750.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Output IGST 18%</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>12240.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Freight &amp; Delivery Charges</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>3500.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+            <DATE>20260924</DATE>
+            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>YP/26-27/104</VOUCHERNUMBER>
+            <REFERENCE>YP/26-27/104</REFERENCE>
+            <PARTYLEDGERNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</PARTYLEDGERNAME>
+            <PARTYNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</PARTYNAME>
+            <BASICBUYERNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</BASICBUYERNAME>
+            <BASICBASEPARTYNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</BASICBASEPARTYNAME>
+            <STATENAME>Maharashtra</STATENAME>
+            <PLACEOFSUPPLY>Maharashtra</PLACEOFSUPPLY>
+            <PARTYGSTIN>27AABCB8819Q1ZN</PARTYGSTIN>
+            <PARTYMAILINGNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</PARTYMAILINGNAME>
+            <CONSIGNEEMAILINGNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</CONSIGNEEMAILINGNAME>
+            <ADDRESS.LIST>
+              <ADDRESS>Unit 4B, MIDC Industrial Area, Tarapur, Boisar</ADDRESS>
+            </ADDRESS.LIST>
+            <ISINVOICE>Yes</ISINVOICE>
+            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
+            <NARRATION>Yamuna Plastics Mobile App Bill #YP/26-27/104. Vehicle: MH-48-AC-3290. Transporter: Konkan Roadlines. Payment: Credit 30 Days. Notes: Virgin resin granules test certificate enclosed.</NARRATION>
+
+            <!-- 1. Party / Sundry Debtor Ledger (Debit in Sales) -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Balaji Polymers &amp; Exports Pvt. Ltd.</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <AMOUNT>-131800.00</AMOUNT>
+              <BILLALLOCATIONS.LIST>
+                <NAME>YP/26-27/104</NAME>
+                <BILLTYPE>New Ref</BILLTYPE>
+                <AMOUNT>-131800.00</AMOUNT>
+              </BILLALLOCATIONS.LIST>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLINVENTORYENTRIES.LIST>
+              <STOCKITEMNAME>Virgin HDPE Blow Moulding Granules</STOCKITEMNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <RATE>110.00/KGS</RATE>
+              <ACTUALQTY> 1000.00 KGS</ACTUALQTY>
+              <BILLEDQTY> 1000.00 KGS</BILLEDQTY>
+              <AMOUNT>110000.00</AMOUNT>
+              <ACCOUNTINGALLOCATIONS.LIST>
+                <LEDGERNAME>Interstate Sales - Plastic Goods (18%)</LEDGERNAME>
+                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+                <AMOUNT>110000.00</AMOUNT>
+              </ACCOUNTINGALLOCATIONS.LIST>
+            </ALLINVENTORYENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Output IGST 18%</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>19800.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>Freight &amp; Delivery Charges</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <AMOUNT>2000.00</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>

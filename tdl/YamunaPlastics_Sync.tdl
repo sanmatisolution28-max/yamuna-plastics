@@ -1,0 +1,229 @@
+;; =========================================================================
+;; Tally Definition Language (TDL) File for Yamuna Plastics Pvt. Ltd.
+;; Compatible with: Tally Prime (All Releases: 1.x, 2.x, 3.x, 4.x, 5.0) & Tally.ERP 9 (Release 6.x+)
+;; Architecture: Zero-Code Client PC — Direct Outbound Sync with Live Cloud Web Portal
+;; Only this single .tdl file is required on the Client PC!
+;; =========================================================================
+
+;; -------------------------------------------------------------------------
+;; Variable Definitions (Persistent across Tally restarts)
+;; -------------------------------------------------------------------------
+[System: Variable]
+    YP_Var_ApiHost  : "http://localhost:5005"
+    YP_Var_FilePath : "C:\TallyPrime\YamunaPlastics_Import.xml"
+
+[Variable: YP_Var_ApiHost]
+    Type       : String
+    Persistent : Yes
+
+[Variable: YP_Var_FilePath]
+    Type       : String
+    Persistent : Yes
+
+[System: Formula]
+    YP_EffectiveAPIHost : if $$IsEmpty:##YP_Var_ApiHost then "http://localhost:5005" else ##YP_Var_ApiHost
+    YP_API_ExportXML    : @@YP_EffectiveAPIHost + "/api/tally/export-xml"
+    YP_API_Status       : @@YP_EffectiveAPIHost + "/api/tally/status"
+    YP_EffectiveFilePath: if $$IsEmpty:##YP_Var_FilePath then "C:\TallyPrime\YamunaPlastics_Import.xml" else ##YP_Var_FilePath
+
+;; =========================================================================
+;; SECTION 1: Gateway of Tally Menu Integration
+;; =========================================================================
+
+[#Menu: Gateway of Tally]
+    Add: Key Item: Before: @@locQuit : "Yamuna Plastics Mobile Sync" : Y : Menu : YP_MainMenu
+
+[Menu: YP_MainMenu]
+    Title   : "Yamuna Plastics - Mobile Billing & TDL Sync Center"
+    Indent  : "Yamuna Plastics"
+
+    ;; Menu Items
+    Key Item: "Sync All Pending Bills from Live Portal" : S : Call    : YP_Fn_SyncFromMobileAPI
+    Key Item: "Import Local XML File"                  : I : Call    : YP_Fn_ImportLocalXMLFile
+    Key Item: "Yamuna Plastics Sync Dashboard"         : D : Display : YP_SyncDashboardReport
+    Key Item: "Configure Live Cloud Portal URL"        : C : Modify  : YP_ConfigReport
+    Key Item: "Open Sales Register"                    : V : Display : Sales Register
+
+;; =========================================================================
+;; SECTION 2: TDL Functions for Sync & Import
+;; =========================================================================
+
+[Function: YP_Fn_SyncFromMobileAPI]
+    Variable: vApiUrl      : String
+    Variable: vSuccessMsg  : String
+
+    01 : Set : vApiUrl : @@YP_API_ExportXML
+    02 : Msg Box : "Yamuna Plastics Sync" : "Connecting to Live Cloud Portal at: " + ##vApiUrl + "..."
+    
+    ;; Trigger XML Import of transaction stream from API URL (Outbound HTTP/HTTPS)
+    03 : Trigger : Import File : ##vApiUrl : "XML" : "Transactions"
+    
+    ;; Confirmation message to user inside Tally
+    04 : Set : vSuccessMsg : "Sync Completed successfully! All pending bills from Yamuna Plastics Live Portal have been imported into Sales Vouchers."
+    05 : Msg Box : "Yamuna Plastics - Success" : ##vSuccessMsg
+    06 : Display : Day Book
+    07 : Return
+
+[Function: YP_Fn_ImportLocalXMLFile]
+    Variable: vFilePath    : String
+
+    01 : Set : vFilePath : @@YP_EffectiveFilePath
+    02 : Msg Box : "Yamuna Plastics Import" : "Importing mobile bills XML from: " + ##vFilePath
+    03 : Trigger : Import File : ##vFilePath : "XML" : "Transactions"
+    04 : Msg Box : "Yamuna Plastics Import" : "Transactions import completed! Please verify your Sales Day Book."
+    05 : Display : Day Book
+    06 : Return
+
+;; =========================================================================
+;; SECTION 3: Dashboard Report & Screen
+;; =========================================================================
+
+[Report: YP_SyncDashboardReport]
+    Title       : "Yamuna Plastics - Mobile Sync Dashboard"
+    Form        : YP_SyncDashboardForm
+
+[Form: YP_SyncDashboardForm]
+    Part        : YP_DashboardTitlePart, YP_DashboardInfoPart, YP_DashboardActionPart
+    Background  : White
+    Button      : YP_Btn_SyncNow, YP_Btn_ImportFile
+
+[Part: YP_DashboardTitlePart]
+    Line        : YP_DashTitleLine, YP_DashSubTitleLine
+    Space Top   : 1
+    Space Bottom: 1
+
+[Line: YP_DashTitleLine]
+    Field       : YP_DashTitleField
+
+[Field: YP_DashTitleField]
+    Set as      : "YAMUNA PLASTICS PVT. LTD. - MOBILE INVOICE SYNC"
+    Style       : Large Bold
+    Color       : Deep Blue
+    Align       : Center
+    FullWidth   : Yes
+
+[Line: YP_DashSubTitleLine]
+    Field       : YP_DashSubTitleField
+
+[Field: YP_DashSubTitleField]
+    Set as      : "Direct TDL & XML Integration Gateway for Live Cloud Billing Portal"
+    Style       : Normal Italic
+    Align       : Center
+    FullWidth   : Yes
+
+[Part: YP_DashboardInfoPart]
+    Line        : YP_InfoLine1, YP_InfoLine2, YP_InfoLine3, YP_InfoLine4, YP_InfoLine5
+    Border      : Thin Box
+    Space Top   : 1
+    Space Bottom: 1
+
+[Line: YP_InfoLine1]
+    Field       : Short Prompt, YP_Fld_APIHost
+    Local       : Field : Short Prompt : Set as : "Live Cloud Portal URL:"
+
+[Field: YP_Fld_APIHost]
+    Set as      : @@YP_EffectiveAPIHost
+    Style       : Normal Bold
+
+[Line: YP_InfoLine2]
+    Field       : Short Prompt, YP_Fld_TargetCo
+    Local       : Field : Short Prompt : Set as : "Active Tally Company:"
+
+[Field: YP_Fld_TargetCo]
+    Set as      : ##SVCURRENTCOMPANY
+    Style       : Normal Bold
+
+[Line: YP_InfoLine3]
+    Field       : Short Prompt, YP_Fld_VchType
+    Local       : Field : Short Prompt : Set as : "Target Voucher Type:"
+
+[Field: YP_Fld_VchType]
+    Set as      : "Sales (Tax Invoice - Plastic Goods)"
+    Style       : Normal
+
+[Line: YP_InfoLine4]
+    Field       : Short Prompt, YP_Fld_GSTAuto
+    Local       : Field : Short Prompt : Set as : "GST & Statutory Rules:"
+
+[Field: YP_Fld_GSTAuto]
+    Set as      : "Auto-applicable with HSN 39235010, Vehicle No, Transporter & Distance"
+    Style       : Normal
+
+[Line: YP_InfoLine5]
+    Field       : Short Prompt, YP_Fld_FilePath
+    Local       : Field : Short Prompt : Set as : "Local XML Backup Path:"
+
+[Field: YP_Fld_FilePath]
+    Set as      : @@YP_EffectiveFilePath
+    Style       : Small
+
+[Part: YP_DashboardActionPart]
+    Line        : YP_ActionLine
+    Space Top   : 1
+
+[Line: YP_ActionLine]
+    Field       : YP_Fld_ActionHelp
+
+[Field: YP_Fld_ActionHelp]
+    Set as      : "Press [F6: Sync API] to pull pending bills from Cloud, or [F7: Import File] to load from disk."
+    Style       : Normal Bold
+    Color       : Dark Green
+    Align       : Center
+    FullWidth   : Yes
+
+[Button: YP_Btn_SyncNow]
+    Title       : "F6: Sync API"
+    Key         : F6
+    Action      : Call : YP_Fn_SyncFromMobileAPI
+
+[Button: YP_Btn_ImportFile]
+    Title       : "F7: Import File"
+    Key         : F7
+    Action      : Call : YP_Fn_ImportLocalXMLFile
+
+;; =========================================================================
+;; SECTION 4: Configuration Settings Screen
+;; =========================================================================
+
+[Report: YP_ConfigReport]
+    Title       : "Yamuna Plastics - Cloud Portal Configuration"
+    Form        : YP_ConfigForm
+
+[Form: YP_ConfigForm]
+    Part        : YP_ConfigPart
+
+[Part: YP_ConfigPart]
+    Line        : YP_CfgLine1, YP_CfgLine2
+    Border      : Thin Box
+
+[Line: YP_CfgLine1]
+    Field       : Medium Prompt, YP_CfgAPIField
+    Local       : Field : Medium Prompt : Set as : "Live Cloud Portal URL:"
+
+[Field: YP_CfgAPIField]
+    Use         : Name Field
+    Modifies    : YP_Var_ApiHost
+    Width       : 50
+    Set Always  : Yes
+
+[Line: YP_CfgLine2]
+    Field       : Medium Prompt, YP_CfgXMLField
+    Local       : Field : Medium Prompt : Set as : "Local XML Backup Path:"
+
+[Field: YP_CfgXMLField]
+    Use         : Name Field
+    Modifies    : YP_Var_FilePath
+    Width       : 50
+    Set Always  : Yes
+
+;; =========================================================================
+;; SECTION 5: Default Invoice Print Title & Subtitle (Matches 186 instaplast)
+;; =========================================================================
+
+[#Form: Comprehensive Invoice]
+    Print Title     : "Tax Invoice"
+    Print Sub Title : "(ORIGINAL FOR RECIPIENT)"
+
+;; =========================================================================
+;; End of Yamuna Plastics TDL File
+;; =========================================================================

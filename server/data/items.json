@@ -1,0 +1,101 @@
+[
+  {
+    "id": "ITEM-000",
+    "name": "T. C. INNER",
+    "description": "Plastic Thread / Inner Component for Packaging (HSN 39235010)",
+    "hsn": "39235010",
+    "unit": "PCS",
+    "baseRate": 0.22,
+    "gstRate": 18,
+    "stockQty": 100000,
+    "category": "Components"
+  },
+  {
+    "id": "ITEM-001",
+    "name": "HDPE Plain Liner Bags (50 Micron)",
+    "description": "High Density Polyethylene transparent barrier liner bags",
+    "hsn": "39232100",
+    "unit": "KGS",
+    "baseRate": 132.00,
+    "gstRate": 18,
+    "stockQty": 3450,
+    "category": "Bags"
+  },
+  {
+    "id": "ITEM-002",
+    "name": "LDPE Heavy Duty Packing Rolls (100 Micron)",
+    "description": "Low Density Polyethylene wide industrial wrapping roll",
+    "hsn": "39201019",
+    "unit": "KGS",
+    "baseRate": 145.00,
+    "gstRate": 18,
+    "stockQty": 2800,
+    "category": "Rolls"
+  },
+  {
+    "id": "ITEM-003",
+    "name": "PP Woven Sacks with Liner (50kg capacity)",
+    "description": "Polypropylene woven bags for fertilizer, chemicals and grains",
+    "hsn": "63053300",
+    "unit": "BAGS",
+    "baseRate": 18.50,
+    "gstRate": 12,
+    "stockQty": 15000,
+    "category": "Sacks"
+  },
+  {
+    "id": "ITEM-004",
+    "name": "Virgin HDPE Blow Moulding Granules",
+    "description": "Prime grade polymer resin pellets for container manufacturing",
+    "hsn": "39012000",
+    "unit": "KGS",
+    "baseRate": 110.00,
+    "gstRate": 18,
+    "stockQty": 8500,
+    "category": "Granules"
+  },
+  {
+    "id": "ITEM-005",
+    "name": "BOPP Printed Packaging Pouches",
+    "description": "Biaxially Oriented PP printed pouches with side gusset",
+    "hsn": "39232990",
+    "unit": "PCS",
+    "baseRate": 4.80,
+    "gstRate": 18,
+    "stockQty": 45000,
+    "category": "Pouches"
+  },
+  {
+    "id": "ITEM-006",
+    "name": "LLDPE Stretch Wrapping Film (23 Micron)",
+    "description": "Cast film pallet wrapping roll, 500mm width x 300m length",
+    "hsn": "39201012",
+    "unit": "ROLLS",
+    "baseRate": 380.00,
+    "gstRate": 18,
+    "stockQty": 1200,
+    "category": "Films"
+  },
+  {
+    "id": "ITEM-007",
+    "name": "Black UV Agriculture Mulch Film (25 Micron)",
+    "description": "Agricultural soil moisture retention and weed control film",
+    "hsn": "39201099",
+    "unit": "ROLLS",
+    "baseRate": 1650.00,
+    "gstRate": 18,
+    "stockQty": 450,
+    "category": "Films"
+  },
+  {
+    "id": "ITEM-008",
+    "name": "Recycled Polypropylene (PP) Granules",
+    "description": "Reprocessed industrial grade black PP moulding granules",
+    "hsn": "39021000",
+    "unit": "KGS",
+    "baseRate": 88.00,
+    "gstRate": 18,
+    "stockQty": 6200,
+    "category": "Granules"
+  }
+]

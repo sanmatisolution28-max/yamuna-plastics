@@ -1,0 +1,14 @@
+{
+  "name": "yamuna-plastics",
+  "version": "1.0.0",
+  "description": "Yamuna Plastics - Mobile Billing, GST Invoicing & Tally Prime TDL Sync Suite",
+  "scripts": {
+    "dev": "node run-dev.js",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "install:all": "npm install && cd server && npm install && cd ../client && npm install"
+  },
+  "keywords": ["tally", "tdl", "billing", "gst", "invoicing", "plastics"],
+  "author": "Yamuna Plastics Pvt. Ltd.",
+  "license": "ISC"
+}

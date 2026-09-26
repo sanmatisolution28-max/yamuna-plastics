@@ -1,0 +1,51 @@
+{
+  "company": {
+    "name": "YAMUNA PLASTIC",
+    "shortName": "Yamuna Plastic",
+    "tagline": "Manufacturers & Suppliers of Premium Plastic Packaging & Components",
+    "address": "26, Patel Estate, Opp Sahajanand Avenue, Opp Muktidham Estate, Jivanwadi, Nikol Gam Road",
+    "city": "Ahmedabad",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "382350",
+    "phone": "+91 9426082500",
+    "email": "yamunaplastic@yahoo.com",
+    "gstin": "24AKNPP7596H1ZF",
+    "pan": "AKNPP7596H",
+    "udyam": "UDYAM-GJ-01-0051476 (Small)",
+    "bankName": "The Karnavati Co-Op.Bank Ltd.",
+    "bankBranch": "Bapunagar",
+    "bankAccountNo": "124002005002108",
+    "bankIfsc": "GSCB0UTKCBL"
+  },
+  "tally": {
+    "host": "localhost",
+    "port": 9000,
+    "companyName": "Sanmati Solution",
+    "voucherType": "Sales",
+    "salesLedgerIntra": "Sales - Plastic Goods (18%)",
+    "salesLedgerInter": "Interstate Sales - Plastic Goods (18%)",
+    "cgstLedger": "Output CGST 9%",
+    "sgstLedger": "Output SGST 9%",
+    "igstLedger": "Output IGST 18%",
+    "roundOffLedger": "Round Off",
+    "freightLedger": "Freight & Delivery Charges"
+  },
+  "ewayBill": {
+    "enabled": true,
+    "mode": "auto",
+    "gstin": "24AKNPP7596H1ZF",
+    "portalUsername": "yamuna_ewb",
+    "portalPassword": "••••••••",
+    "gspProvider": "NIC Direct Portal / Tally GSP",
+    "gspClientId": "YAMUNA_GSP_CLIENT_ID_2026",
+    "gspClientSecret": "••••••••••••••••",
+    "autoSyncWithTally": true,
+    "defaultDispatchPincode": "382350",
+    "defaultDispatchAddress": "26, Patel Estate, Opp Muktidham Estate, Nikol Gam Road, Ahmedabad",
+    "thresholdAmount": 50000,
+    "alwaysGenerate": true
+  },
+  "invoicePrefix": "YP/26-27/",
+  "nextInvoiceNumber": 189
+}
