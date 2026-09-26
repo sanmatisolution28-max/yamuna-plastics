@@ -238,24 +238,46 @@ export default function BillForm({
     } else if (parties.length > 0 && !selectedPartyId) {
       handlePartyChange(parties[0].id);
     }
-  }, [editingInvoice, preselectedPartyId, parties]);
+
+    if (!editingInvoice && items.length > 0) {
+      setLines((prev) => {
+        if (prev.length === 1 && !prev[0].name) {
+          const first = items[0];
+          return [{
+            id: 'line-1',
+            itemId: first.id || '',
+            name: first.name,
+            hsn: first.hsn || '39232100',
+            qty: 100,
+            unit: first.unit || 'KGS',
+            rate: Number(first.baseRate || first.rate || 0),
+            discountPct: 0,
+            gstRate: Number(first.gstRate || 18)
+          }];
+        }
+        return prev;
+      });
+    }
+  }, [editingInvoice, preselectedPartyId, parties, items]);
 
   // Is interstate supply? Gujarat state code is "24"
   const isInterstate = String(partyDetails.stateCode).trim() !== '24';
 
-  // Add line item row
+  // Add line item row with dynamic default from Tally items
   const addLine = () => {
+    const defaultItem = items && items.length > 0 ? items[0] : null;
     setLines((prev) => [
       ...prev,
       {
         id: `line-${Date.now()}`,
-        name: '',
-        hsn: '39232100',
+        itemId: defaultItem ? (defaultItem.id || '') : '',
+        name: defaultItem ? defaultItem.name : '',
+        hsn: defaultItem ? (defaultItem.hsn || '39232100') : '39232100',
         qty: 100,
-        unit: 'KGS',
-        rate: 132.00,
+        unit: defaultItem ? (defaultItem.unit || 'KGS') : 'KGS',
+        rate: defaultItem ? Number(defaultItem.baseRate || defaultItem.rate || 0) : 125.00,
         discountPct: 0,
-        gstRate: 18
+        gstRate: defaultItem ? Number(defaultItem.gstRate || 18) : 18
       }
     ]);
   };
@@ -266,11 +288,35 @@ export default function BillForm({
     setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Update line item field
+  // Update line item field with automatic product rate & HSN lookup
   const updateLine = (index, field, value) => {
     setLines((prev) => {
       const copy = [...prev];
-      copy[index] = { ...copy[index], [field]: value };
+      if (field === 'name') {
+        const trimmedVal = String(value || '').trim().toLowerCase();
+        const matchedItem = items.find(
+          (it) =>
+            it.name.toLowerCase() === trimmedVal ||
+            it.id === value ||
+            it.name.toLowerCase().startsWith(trimmedVal)
+        );
+
+        if (matchedItem) {
+          copy[index] = {
+            ...copy[index],
+            name: matchedItem.name,
+            itemId: matchedItem.id,
+            hsn: matchedItem.hsn || copy[index].hsn || '39232100',
+            unit: matchedItem.unit || copy[index].unit || 'KGS',
+            rate: Number(matchedItem.baseRate || matchedItem.rate || copy[index].rate || 0),
+            gstRate: Number(matchedItem.gstRate || copy[index].gstRate || 18)
+          };
+        } else {
+          copy[index] = { ...copy[index], name: value };
+        }
+      } else {
+        copy[index] = { ...copy[index], [field]: value };
+      }
       return copy;
     });
   };
@@ -1013,14 +1059,13 @@ export default function BillForm({
           </table>
 
           <datalist id="product-suggestions">
-            <option value="HDPE Plain Liner Bags (50 Micron)" />
-            <option value="LDPE Heavy Duty Packing Rolls (100 Micron)" />
-            <option value="PP Woven Sacks (50 Kg Heavy Packing)" />
-            <option value="T. C. INNER" />
-            <option value="Black UV Agricultural Mulch Film (25 Micron)" />
-            <option value="Virgin HDPE Blow Moulding Granules" />
-            <option value="Rotomoulding Grade LLDPE Powder" />
-            <option value="Plastic Corrugated Packaging Rolls" />
+            {items.map((it) => (
+              <option
+                key={it.id || it.name}
+                value={it.name}
+                label={`₹${it.baseRate || it.rate || 0}/${it.unit || 'KGS'} · HSN ${it.hsn || '39232100'}`}
+              />
+            ))}
           </datalist>
         </div>
 
