@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { api } from '../utils/api';
 
 export default function LoginModal({ onLoginSuccess }) {
-  const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -29,12 +29,6 @@ export default function LoginModal({ onLoginSuccess }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUseDefault = () => {
-    setUsername('admin');
-    setPassword('admin');
-    setError('');
   };
 
   return (
@@ -75,7 +69,7 @@ export default function LoginModal({ onLoginSuccess }) {
                 autoComplete="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter User ID (default: admin)"
+                placeholder="Enter User ID"
                 required
               />
             </div>
@@ -94,7 +88,7 @@ export default function LoginModal({ onLoginSuccess }) {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password (default: admin)"
+                placeholder="Enter Password"
                 required
               />
               <button
@@ -107,26 +101,6 @@ export default function LoginModal({ onLoginSuccess }) {
                 {showPassword ? '👁️' : '🙈'}
               </button>
             </div>
-          </div>
-
-          {/* Quick credential hint banner */}
-          <div className="login-default-hint">
-            <div className="hint-header">
-              <span>💡 Default Login Credentials:</span>
-              <button
-                type="button"
-                className="btn-quick-fill"
-                onClick={handleUseDefault}
-              >
-                Auto-Fill
-              </button>
-            </div>
-            <div className="hint-codes">
-              <span>ID: <code>admin</code></span>
-              <span>•</span>
-              <span>Password: <code>admin</code></span>
-            </div>
-            <p className="hint-sub">You can update this password anytime in the new <strong>Profile &amp; Settings</strong> page.</p>
           </div>
 
           <button

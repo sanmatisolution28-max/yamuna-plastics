@@ -91,7 +91,7 @@ export default function ProfileModal({ user, onClose, onLogout }) {
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password (default: admin)"
+                  placeholder="Enter current password"
                   required
                 />
               </div>

@@ -202,7 +202,6 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
               <div className="form-group">
                 <label className="profile-form-label">
                   Current Password <span className="req">*</span>
-                  <small className="label-hint">(Default on new setup is: <code>admin</code>)</small>
                 </label>
                 <div className="input-password-wrapper">
                   <input
