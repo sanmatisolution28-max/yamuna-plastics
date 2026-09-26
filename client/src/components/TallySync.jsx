@@ -301,11 +301,11 @@ export default function TallySync({
         )}
       </div>
 
-      {/* 2. Masters Sync Card: Sundry Debtors & Stock Items */}
+      {/* 2. Customer Masters Sync Card: Sundry Debtors */}
       <div className="form-card" style={{ border: '2px solid #10b981' }}>
         <div className="card-title-row">
           <div className="card-title">
-            <span style={{ color: '#047857' }}>👥 Tally Masters Synchronization (Sundry Debtors &amp; Stock Items)</span>
+            <span style={{ color: '#047857' }}>👥 Tally Customer Synchronization (Sundry Debtors)</span>
           </div>
           <span style={{ background: '#ecfdf5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
             Tally Prime Source
@@ -313,17 +313,13 @@ export default function TallySync({
         </div>
 
         <div style={{ fontSize: '12.5px', color: '#475569', marginBottom: '14px', lineHeight: 1.5 }}>
-          All customer parties and stock items in the billing system are synchronized directly with Tally Prime. Only <strong>Sundry Debtors</strong> and active <strong>Stock Items</strong> are extracted, keeping your billing dropdowns completely clean.
+          All customer parties in the billing system are synchronized directly with Tally Prime. Only <strong>Sundry Debtors</strong> are extracted (with GSTIN, State, Billing Address, and Phone), keeping your billing dropdowns completely verified.
         </div>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ flex: 1, background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#047857' }}>{parties.length}</div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Sundry Debtors (Customers)</div>
-          </div>
-          <div style={{ flex: 1, background: '#f8fafc', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '22px', fontWeight: 900, color: '#2563eb' }}>{items.length}</div>
-            <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b' }}>Stock Items Catalog</div>
+          <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+            <div style={{ fontSize: '26px', fontWeight: 900, color: '#047857' }}>{parties.length}</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Sundry Debtors (Tally Prime Customers)</div>
           </div>
         </div>
 
@@ -335,14 +331,14 @@ export default function TallySync({
             disabled={syncingMasters}
             onClick={handleFetchMasters}
           >
-            {syncingMasters ? '⏳ Pulling Masters from Tally...' : '⚡ Pull Latest Masters from Tally Prime (Port 9000)'}
+            {syncingMasters ? '⏳ Pulling Customers from Tally...' : '⚡ Pull Customers from Tally Prime (Port 9000)'}
           </button>
 
           <label
             className="btn-sync-action"
             style={{ flex: 1, minWidth: '200px', textAlign: 'center', cursor: 'pointer', margin: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            {importingXml ? 'Importing XML...' : '📥 Import Masters XML File'}
+            {importingXml ? 'Importing XML...' : '📥 Import Customer XML File'}
             <input
               type="file"
               accept=".xml"

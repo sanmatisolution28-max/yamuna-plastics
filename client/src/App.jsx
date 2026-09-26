@@ -261,16 +261,6 @@ export default function App() {
 
           <button
             type="button"
-            className={`tab-button ${activeTab === 'items' ? 'active' : ''}`}
-            onClick={() => setActiveTab('items')}
-          >
-            <span className="tab-icon">📦</span>
-            <span className="tab-text">Stock Items</span>
-            <span className="tab-badge">{items.length}</span>
-          </button>
-
-          <button
-            type="button"
             className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
@@ -373,14 +363,6 @@ export default function App() {
               <PartyMaster
                 parties={parties}
                 onPartyAdded={(p) => setParties((prev) => [...prev, p])}
-                onRefresh={loadData}
-              />
-            )}
-
-            {activeTab === 'items' && (
-              <ItemCatalog
-                items={items}
-                onItemAdded={(it) => setItems((prev) => [...prev, it])}
                 onRefresh={loadData}
               />
             )}

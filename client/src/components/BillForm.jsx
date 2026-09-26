@@ -174,50 +174,25 @@ export default function BillForm({
       if (parties.length > 0 && !selectedPartyId) {
         handlePartyChange(parties[0].id);
       }
-      if (items.length > 0 && lines[0] && !lines[0].itemId) {
-        const it = items[0];
-        setLines([
-          {
-            id: 'line-1',
-            itemId: it.id,
-            name: it.name,
-            hsn: it.hsn || '39232100',
-            qty: 250,
-            unit: it.unit || 'KGS',
-            rate: it.baseRate || 125,
-            discountPct: 0,
-            gstRate: it.gstRate || 18
-          }
-        ]);
-      }
     }
-  }, [editingInvoice, parties, items]);
+  }, [editingInvoice, parties]);
 
   // Is interstate supply? Gujarat state code is "24"
   const isInterstate = String(partyDetails.stateCode).trim() !== '24';
 
   // Add line item row
   const addLine = () => {
-    const defaultItem = items[0] || {
-      id: '',
-      name: 'Plastic Material',
-      hsn: '39232100',
-      unit: 'KGS',
-      baseRate: 125,
-      gstRate: 18
-    };
     setLines((prev) => [
       ...prev,
       {
         id: `line-${Date.now()}`,
-        itemId: defaultItem.id,
-        name: defaultItem.name,
-        hsn: defaultItem.hsn || '39232100',
+        name: '',
+        hsn: '39232100',
         qty: 100,
-        unit: defaultItem.unit || 'KGS',
-        rate: defaultItem.baseRate || 125,
+        unit: 'KGS',
+        rate: 125,
         discountPct: 0,
-        gstRate: defaultItem.gstRate || 18
+        gstRate: 18
       }
     ]);
   };
@@ -232,20 +207,7 @@ export default function BillForm({
   const updateLine = (index, field, value) => {
     setLines((prev) => {
       const copy = [...prev];
-      const line = { ...copy[index], [field]: value };
-
-      // When choosing product from Tally stock items, auto-fill HSN, unit, rate, and GST rate
-      if (field === 'itemId') {
-        const product = items.find((it) => it.id === value);
-        if (product) {
-          line.name = product.name;
-          line.hsn = product.hsn || '39232100';
-          line.unit = product.unit || 'KGS';
-          line.rate = product.baseRate || 125;
-          line.gstRate = product.gstRate || 18;
-        }
-      }
-      copy[index] = line;
+      copy[index] = { ...copy[index], [field]: value };
       return copy;
     });
   };
@@ -667,10 +629,10 @@ export default function BillForm({
         <div className="card-section-header">
           <div className="header-title">
             <span className="section-icon">📦</span>
-            <h3>Product Line Items ({lines.length} items)</h3>
+            <h3>Bill Items ({lines.length} items)</h3>
           </div>
           <button type="button" className="btn-table-add-row" onClick={addLine}>
-            + Add Product Row
+            + Add Item Row
           </button>
         </div>
 
@@ -679,7 +641,7 @@ export default function BillForm({
             <thead>
               <tr>
                 <th style={{ width: '40px' }}>#</th>
-                <th style={{ width: '32%' }}>Product Name (from Tally)</th>
+                <th style={{ width: '34%' }}>Product Description / Item</th>
                 <th style={{ width: '12%' }}>HSN Code</th>
                 <th style={{ width: '10%' }}>Qty</th>
                 <th style={{ width: '10%' }}>Unit</th>
@@ -696,29 +658,17 @@ export default function BillForm({
                 <tr key={line.id} className="item-table-row">
                   <td className="row-index">{idx + 1}</td>
 
-                  {/* Product Selector */}
+                  {/* Product Description */}
                   <td>
-                    <select
-                      className="table-cell-select"
-                      value={line.itemId}
-                      onChange={(e) => updateLine(idx, 'itemId', e.target.value)}
-                    >
-                      <option value="">-- Choose Product --</option>
-                      {items.map((it) => (
-                        <option key={it.id} value={it.id}>
-                          {it.name} [{it.unit || 'KGS'}] - ₹{it.baseRate}
-                        </option>
-                      ))}
-                    </select>
-                    {!line.itemId && (
-                      <input
-                        type="text"
-                        className="table-cell-input-sub"
-                        placeholder="Or custom item name"
-                        value={line.name}
-                        onChange={(e) => updateLine(idx, 'name', e.target.value)}
-                      />
-                    )}
+                    <input
+                      type="text"
+                      list="product-suggestions"
+                      className="table-cell-input bold"
+                      placeholder="e.g. HDPE Plain Liner Bags (50 Micron)"
+                      value={line.name}
+                      onChange={(e) => updateLine(idx, 'name', e.target.value)}
+                      required
+                    />
                   </td>
 
                   {/* HSN */}
@@ -825,11 +775,22 @@ export default function BillForm({
               ))}
             </tbody>
           </table>
+
+          <datalist id="product-suggestions">
+            <option value="HDPE Plain Liner Bags (50 Micron)" />
+            <option value="LDPE Heavy Duty Packing Rolls (100 Micron)" />
+            <option value="PP Woven Sacks (50 Kg Heavy Packing)" />
+            <option value="T. C. INNER" />
+            <option value="Black UV Agricultural Mulch Film (25 Micron)" />
+            <option value="Virgin HDPE Blow Moulding Granules" />
+            <option value="Rotomoulding Grade LLDPE Powder" />
+            <option value="Plastic Corrugated Packaging Rolls" />
+          </datalist>
         </div>
 
         <div className="table-footer-action-bar">
           <button type="button" className="btn-add-line-outline" onClick={addLine}>
-            + Add Another Product
+            + Add Another Item
           </button>
         </div>
       </div>
