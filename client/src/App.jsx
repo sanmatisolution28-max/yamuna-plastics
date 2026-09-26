@@ -34,6 +34,29 @@ export default function App() {
   const [preselectedPartyId, setPreselectedPartyId] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
+// Light / dark theme. The initial value is read from the document, which the
+// inline script in index.html has already set before React mounts (so there is
+// no flash of the wrong theme), defaulting to the OS preference.
+const [theme, setTheme] = useState(() => {
+  if (typeof document === 'undefined') return 'light';
+  return document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+});
+
+const toggleTheme = () => {
+  setTheme((prev) => {
+    const next = prev === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    try { window.localStorage.setItem('yamuna.theme', next); } catch { /* private mode */ }
+    return next;
+  });
+};
+
+// Keep the document in step if anything else changes the attribute.
+useEffect(() => {
+  document.documentElement.setAttribute('data-theme', theme);
+  try { window.localStorage.setItem('yamuna.theme', theme); } catch { /* private mode */ }
+}, [theme]);
+
   // Load all initial data from server
   const loadData = async () => {
     try {
@@ -177,6 +200,19 @@ export default function App() {
 
           {/* Right Action Controls */}
           <div className="navbar-actions">
+            <button
+              type="button"
+              className="btn-theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              <span className="theme-toggle-icon" aria-hidden="true">
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </span>
+              <span className="btn-label-desktop">{theme === 'dark' ? 'Light' : 'Dark'}</span>
+            </button>
+
             <button
               type="button"
               className="btn-nav-secondary"
