@@ -135,6 +135,11 @@
 
   /* Ink for text sitting directly ON a light amber fill. */
   --warning-on-fill: #78350f;
+
+  /* The login screen keeps its own fixed dark backdrop in BOTH themes, so
+     its text cannot follow the page palette. Pinned light values. */
+  --on-dark: #e8eef7;
+  --on-dark-muted: #9fb0c7;
 }
 
 /* Base Reset & Typography */
@@ -231,7 +236,8 @@ button, input, select, textarea {
 .brand-text .version-tag {
   font-size: 9.5px;
   background: rgba(37, 99, 235, 0.3);
-  color: var(--primary-soft-text);
+  /* The navbar is dark in BOTH themes, so this stays a fixed light value. */
+  color: var(--on-dark);
   border: 1px solid rgba(147, 197, 253, 0.35);
   padding: 1px 7px;
   border-radius: var(--radius-full);
@@ -413,7 +419,7 @@ button, input, select, textarea {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border-light);
   box-shadow: var(--shadow-subtle);
 }
@@ -769,7 +775,7 @@ button, input, select, textarea {
 
 .btn-delete-line {
   background: transparent;
-  color: var(--danger);
+  color: var(--danger-ink);
   border: none;
   font-size: 16px;
   cursor: pointer;
@@ -828,7 +834,7 @@ button, input, select, textarea {
 .total-amount {
   font-size: 26px;
   font-weight: 900;
-  color: var(--primary);
+  color: var(--primary-ink);
   letter-spacing: -0.5px;
 }
 
@@ -1106,7 +1112,7 @@ button, input, select, textarea {
 
 .badge-status.ewb {
   background: var(--success-bg);
-  color: var(--success-deep);
+  color: var(--success-ink);
   border: 1px solid var(--success-border-strong);
 }
 
@@ -1268,7 +1274,7 @@ button, input, select, textarea {
 .inv-total {
   font-size: 20px;
   font-weight: 900;
-  color: var(--primary);
+  color: var(--primary-ink);
   letter-spacing: -0.5px;
 }
 
@@ -1612,7 +1618,7 @@ button, input, select, textarea {
 
 .login-subtitle {
   font-size: 12.5px;
-  color: var(--text-faint);
+  color: var(--on-dark-muted);
   font-weight: 500;
   margin: 0 0 14px;
   letter-spacing: 0.2px;
@@ -1627,7 +1633,7 @@ button, input, select, textarea {
   border-radius: 9999px;
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(16, 185, 129, 0.3);
-  color: var(--success-soft);
+  color: var(--on-dark);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.3px;
@@ -1670,7 +1676,7 @@ button, input, select, textarea {
 .login-alert-box.error {
   background: rgba(239, 68, 68, 0.15);
   border: 1.5px solid rgba(239, 68, 68, 0.45);
-  color: var(--danger-border-strong);
+  color: var(--on-dark);
 }
 
 .login-alert-box.error svg {
@@ -1709,7 +1715,7 @@ button, input, select, textarea {
 }
 
 .login-label .req {
-  color: var(--danger-soft);
+  color: var(--on-dark);
   font-size: 13px;
 }
 
@@ -1725,7 +1731,7 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-muted);
+  color: var(--on-dark-muted);
   pointer-events: none;
   transition: color 0.2s ease;
 }
@@ -1737,13 +1743,13 @@ button, input, select, textarea {
   border: 1.5px solid rgba(148, 163, 184, 0.22);
   border-radius: 12px;
   font-size: 14px;
-  color: var(--bg-app);
+  color: var(--on-dark);
   outline: none;
   transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .login-input-control::placeholder {
-  color: var(--text-muted);
+  color: var(--on-dark-muted);
   font-size: 13px;
 }
 
@@ -1759,7 +1765,7 @@ button, input, select, textarea {
 }
 
 .login-input-wrap:focus-within .login-input-icon {
-  color: var(--primary-soft);
+  color: var(--on-dark);
 }
 
 /* Password Toggle */
@@ -1768,7 +1774,7 @@ button, input, select, textarea {
   right: 12px;
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--on-dark-muted);
   cursor: pointer;
   padding: 6px;
   border-radius: 8px;
@@ -1779,7 +1785,7 @@ button, input, select, textarea {
 }
 
 .login-pw-toggle:hover {
-  color: var(--primary-soft-text);
+  color: var(--on-dark);
   background: rgba(255, 255, 255, 0.08);
 }
 
@@ -1872,7 +1878,7 @@ button, input, select, textarea {
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9999px;
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--on-dark-muted);
   font-weight: 600;
 }
 
@@ -1952,7 +1958,8 @@ button, input, select, textarea {
 
 .user-info-text .user-role {
   font-size: 9.5px;
-  color: var(--primary-soft-text);
+  /* Navbar text: fixed light value, see .brand-text .version-tag. */
+  color: var(--on-dark-muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -2068,7 +2075,7 @@ button, input, select, textarea {
 .btn-danger-signout {
   background: rgba(239, 68, 68, 0.18);
   border: 1px solid rgba(239, 68, 68, 0.35);
-  color: var(--danger-border-strong);
+  color: var(--danger-ink);
   padding: 9px 18px;
   border-radius: 10px;
   font-size: 12.5px;
@@ -2170,7 +2177,7 @@ button, input, select, textarea {
 .profile-alert.success {
   background: var(--success-bg);
   border: 1.5px solid var(--success-border-strong);
-  color: var(--success-deep);
+  color: var(--success-ink);
 }
 
 .profile-alert.error {
@@ -2202,7 +2209,7 @@ button, input, select, textarea {
 }
 
 .profile-form-label .req {
-  color: var(--danger);
+  color: var(--danger-ink);
 }
 
 .label-hint {
@@ -2504,7 +2511,7 @@ button, input, select, textarea {
 .workbench-alert.success {
   background: var(--success-bg-strong);
   border: 1.5px solid var(--success-border-strong);
-  color: var(--success-deep);
+  color: var(--success-ink);
 }
 
 .workbench-alert.warning {
@@ -2554,7 +2561,7 @@ button, input, select, textarea {
   font-weight: 600;
   color: var(--text-main);
   outline: none;
-  background: white;
+  background: var(--bg-input);
   transition: all 0.2s;
 }
 
@@ -2610,7 +2617,7 @@ button, input, select, textarea {
 .btn-text-action {
   background: none;
   border: none;
-  color: var(--primary);
+  color: var(--primary-ink);
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
@@ -2648,7 +2655,7 @@ button, input, select, textarea {
 .btn-sync-inline-party {
   background: var(--success-bg);
   border: 1px solid var(--success-border-strong);
-  color: var(--success-text);
+  color: var(--success-ink);
   font-size: 11.5px;
   font-weight: 700;
   padding: 3px 9px;
@@ -2702,7 +2709,7 @@ button, input, select, textarea {
   right: 8px;
   background: none;
   border: none;
-  color: var(--text-faint);
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   padding: 2px 4px;
@@ -2724,7 +2731,7 @@ button, input, select, textarea {
   border: 1px solid var(--warning-bg-strong);
   border-radius: 8px;
   padding: 10px 14px;
-  color: var(--warning-text);
+  color: var(--warning-ink);
   font-size: 12px;
   margin-top: 6px;
 }
@@ -2738,7 +2745,7 @@ button, input, select, textarea {
 
 .customer-source-pill {
   background: var(--tint-cyan-bg);
-  color: var(--accent-cyan-deep);
+  color: var(--accent-cyan-ink);
   border: 1px solid var(--tint-cyan-bg-strong);
   font-size: 10.5px;
   font-weight: 700;
@@ -2936,7 +2943,7 @@ button, input, select, textarea {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-main);
-  background: white;
+  background: var(--bg-input);
   outline: none;
 }
 
@@ -2949,7 +2956,7 @@ button, input, select, textarea {
   font-weight: 600;
   color: var(--text-main);
   outline: none;
-  background: white;
+  background: var(--bg-input);
 }
 
 .table-cell-input.bold {
@@ -2978,7 +2985,7 @@ button, input, select, textarea {
 }
 
 .table-cell-numeric.bold.highlight {
-  color: var(--success-deep);
+  color: var(--success-ink);
   font-weight: 800;
 }
 
@@ -3091,7 +3098,7 @@ button, input, select, textarea {
 
 .grand-total-value {
   font-size: 20px;
-  color: var(--primary-deep);
+  color: var(--primary-ink);
   font-weight: 900;
 }
 
@@ -3329,7 +3336,7 @@ button, input, select, textarea {
 
 .party-type-chip {
   background: var(--tint-blue-bg);
-  color: var(--primary-active);
+  color: var(--primary-ink);
   font-size: 10px;
   font-weight: 800;
   padding: 2px 7px;
@@ -3414,7 +3421,7 @@ button, input, select, textarea {
 .btn-link-action {
   background: none;
   border: none;
-  color: var(--primary);
+  color: var(--primary-ink);
   font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
@@ -3422,7 +3429,7 @@ button, input, select, textarea {
 }
 
 .btn-link-action:hover {
-  color: var(--primary-hover);
+  color: var(--primary-ink);
 }
 
 .ship-to-action-row {
@@ -3441,11 +3448,11 @@ button, input, select, textarea {
 .custom-shipto-notice {
   font-size: 11.5px;
   font-weight: 800;
-  color: var(--warning-text);
+  color: var(--warning-ink);
 }
 
 .btn-copy-billto-sm {
-  background: white;
+  background: var(--bg-card);
   border: 1px solid var(--border-medium);
   color: var(--text-strong);
   font-size: 11px;
@@ -3595,12 +3602,12 @@ button, input, select, textarea {
 
 .invoice-sync-alert.success {
   background: var(--success-bg-strong);
-  color: var(--success-deep);
+  color: var(--success-ink);
 }
 
 .invoice-sync-alert.error {
   background: var(--danger-bg);
-  color: var(--danger-text);
+  color: var(--danger-ink);
 }
 
 .invoice-sheet-wrapper {
@@ -3732,7 +3739,7 @@ button, input, select, textarea {
 }
 
 .ewb-num {
-  color: var(--success-text);
+  color: var(--success-ink);
 }
 
 .ewb-lbl {
@@ -3786,7 +3793,7 @@ button, input, select, textarea {
 .meta-val.invoice-no-highlight {
   font-size: 11.5px;
   font-weight: 900;
-  color: var(--primary-deep);
+  color: var(--primary-ink);
 }
 
 .meta-val.bold {
@@ -4069,7 +4076,7 @@ button, input, select, textarea {
 .grand-val {
   font-size: 17px;
   font-weight: 900;
-  color: var(--primary-deep);
+  color: var(--primary-ink);
 }
 
 .signature-area {
@@ -4251,7 +4258,7 @@ button, input, select, textarea {
 .btn-link-action {
   background: none;
   border: none;
-  color: var(--primary);
+  color: var(--primary-ink);
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
@@ -4260,7 +4267,7 @@ button, input, select, textarea {
 }
 
 .btn-link-action:hover {
-  color: var(--primary-hover);
+  color: var(--primary-ink);
 }
 
 /* ==========================================================================
@@ -4369,7 +4376,7 @@ button, input, select, textarea {
   right: 10px;
   background: none;
   border: none;
-  color: var(--text-faint);
+  color: var(--text-secondary);
   font-size: 12px;
   cursor: pointer;
   padding: 2px 4px;
@@ -4443,7 +4450,7 @@ button, input, select, textarea {
   font-size: 10px;
   font-weight: 700;
   background: var(--tint-cyan-bg);
-  color: var(--accent-cyan-deep);
+  color: var(--accent-cyan-ink);
   padding: 1px 6px;
   border-radius: 4px;
   border: 1px solid var(--tint-cyan-bg-strong);
@@ -4580,13 +4587,13 @@ button, input, select, textarea {
 .profile-item .item-val.primary {
   font-size: 15px;
   font-weight: 900;
-  color: var(--primary-deep);
+  color: var(--primary-ink);
 }
 
 .profile-item .item-val.mono {
   font-family: monospace;
   font-weight: 800;
-  color: var(--success-deep);
+  color: var(--success-ink);
 }
 
 /* ============ Product Picker (searchable line-item combobox) ============ */
@@ -4650,7 +4657,7 @@ button, input, select, textarea {
 .pp-meta {
   font-size: 11px;
   font-weight: 600;
-  color: var(--accent-cyan-deep);
+  color: var(--accent-cyan-ink);
   white-space: nowrap;
 }
 
@@ -4734,7 +4741,7 @@ button, input, select, textarea {
   font-size: 10.5px;
   font-weight: 800;
   text-align: center;
-  color: var(--accent-cyan-deep);
+  color: var(--accent-cyan-ink);
   background: var(--tint-cyan-bg);
   border-radius: 999px;
 }
@@ -4787,7 +4794,7 @@ button, input, select, textarea {
   padding: 2px 7px;
   font-size: 11px;
   font-weight: 800;
-  color: var(--accent-cyan-deep);
+  color: var(--accent-cyan-ink);
   background: var(--tint-cyan-bg);
   border-radius: 999px;
   white-space: nowrap;
@@ -4810,7 +4817,7 @@ button, input, select, textarea {
   flex: none;
   font-size: 14px;
   font-weight: 900;
-  color: var(--accent-cyan);
+  color: var(--accent-cyan-ink);
 }
 
 .pp-empty {
@@ -4921,7 +4928,7 @@ button, input, select, textarea {
   --text-soft: #cbd5e1;
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
-  --text-faint: #64748b;
+  --text-faint: #8296b0;
   --text-inverted: #ffffff;
   --border-light: #334155;
   --border-medium: #475569;
@@ -5106,7 +5113,7 @@ button, input, select, textarea {
 }
 
 [data-theme='dark'] .pp-search-input::placeholder {
-  color: var(--text-faint);
+  color: var(--text-muted);
 }
 
 [data-theme='dark'] input:-webkit-autofill,
@@ -5361,13 +5368,27 @@ button, input, select, textarea {
    light block readable.
    -------------------------------------------------------------------------- */
 [data-theme='dark'] {
-  --primary-ink: #93c5fd;
-  --success-ink: #6ee7b7;
-  --warning-ink: #fcd34d;
+  /* Dark mode text is white or light gray only. The state colour survives in
+     the wash behind each chip, not in the label itself. */
+  --primary-ink: #e2e8f0;
+  --success-ink: #e2e8f0;
+  --warning-ink: #e2e8f0;
+  --danger-ink: #f1f5f9;
+  --accent-cyan-ink: #e2e8f0;
+  --purple-ink: #e2e8f0;
+  /* The one deliberate exception: this text sits on a LIGHT amber fill
+     (--warning-strong stays light in dark mode), so it has to stay dark. */
   --warning-on-fill: #451a03;
-  --danger-ink: #fca5a5;
-  --accent-cyan-ink: #7dd3fc;
-  --purple-ink: #c4b5fd;
   /* Fills keep their value so white text stays legible. */
   --fill-cyan-deep: #0e7490;
+}
+/* --------------------------------------------------------------------------
+   NATIVE SELECT OPTIONS
+   A <select> popup is painted by the browser, not the page, so it ignores the
+   theme background unless the options are styled explicitly. Without this the
+   list opens light-on-light in dark mode.
+   -------------------------------------------------------------------------- */
+[data-theme='dark'] option {
+  background-color: var(--bg-card);
+  color: var(--text-main);
 }
