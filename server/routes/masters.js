@@ -226,6 +226,24 @@ router.get('/parties', async (req, res) => {
   }
 });
 
+router.post('/parties/clear', async (req, res) => {
+  try {
+    await writeJson(PARTIES_FILE, []);
+    res.json({ success: true, message: 'Parties reset to 0' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/items/clear', async (req, res) => {
+  try {
+    await writeJson(ITEMS_FILE, []);
+    res.json({ success: true, message: 'Items reset to 0' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/parties', async (req, res) => {
   try {
     const parties = await readJson(PARTIES_FILE, []);
