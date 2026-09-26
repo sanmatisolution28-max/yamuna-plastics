@@ -2,10 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../utils/api';
 import { formatINR, numberToWords } from '../utils/numberToWords';
 
-export default function BillForm({ onBillGenerated, onViewInvoice, parties, items, settings, editingInvoice, onCancelEdit }) {
+export default function BillForm({
+  onBillGenerated,
+  onViewInvoice,
+  parties = [],
+  items = [],
+  settings,
+  editingInvoice,
+  onCancelEdit,
+  onRefresh
+}) {
   const isEditing = Boolean(editingInvoice && editingInvoice.id);
 
+  // Customer State
   const [selectedPartyId, setSelectedPartyId] = useState('');
+  const [partySearch, setPartySearch] = useState('');
+  const [showCustomParty, setShowCustomParty] = useState(false);
   const [partyDetails, setPartyDetails] = useState({
     name: '',
     gstin: '',
@@ -16,6 +28,7 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
     placeOfSupply: 'Gujarat'
   });
 
+  // Invoice Metadata
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10)
@@ -32,7 +45,7 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
   const [notes, setNotes] = useState('');
   const [freightCharges, setFreightCharges] = useState(0);
 
-  // Line items state
+  // Tabular Line Items State
   const [lines, setLines] = useState([
     {
       id: 'line-1',
@@ -48,14 +61,61 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
   ]);
 
   const [saving, setSaving] = useState(false);
+  const [syncingTally, setSyncingTally] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successNotice, setSuccessNotice] = useState(null);
+  const [tallyNotice, setTallyNotice] = useState(null);
 
-  // Auto-fill party details when party is selected from dropdown
+  // Filtered Debtors list for fast search
+  const filteredParties = parties.filter((p) => {
+    if (!partySearch.trim()) return true;
+    const q = partySearch.toLowerCase();
+    return (
+      (p.name && p.name.toLowerCase().includes(q)) ||
+      (p.gstin && p.gstin.toLowerCase().includes(q)) ||
+      (p.state && p.state.toLowerCase().includes(q)) ||
+      (p.address && p.address.toLowerCase().includes(q))
+    );
+  });
+
+  // Fetch live masters from Tally directly from the Bill creation screen
+  const handleSyncFromTally = async () => {
+    setSyncingTally(true);
+    setTallyNotice(null);
+    try {
+      const res = await api.fetchMastersFromTally();
+      if (res.success) {
+        setTallyNotice({
+          type: 'success',
+          text: `✅ ${res.message} (${res.totalParties} Customers & ${res.totalItems} Products ready)`
+        });
+        if (onRefresh) await onRefresh();
+      } else {
+        setTallyNotice({
+          type: 'warning',
+          text: res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.'
+        });
+      }
+    } catch (err) {
+      setTallyNotice({
+        type: 'warning',
+        text: 'Tally Prime on Port 9000 is on standby. All saved masters remain ready.'
+      });
+    } finally {
+      setSyncingTally(false);
+    }
+  };
+
+  // Auto-fill party details when customer is chosen from Tally list
   const handlePartyChange = (partyId) => {
     setSelectedPartyId(partyId);
+    if (!partyId) {
+      setShowCustomParty(true);
+      return;
+    }
     const p = parties.find((item) => item.id === partyId);
     if (p) {
+      setShowCustomParty(false);
       setPartyDetails({
         name: p.name,
         gstin: p.gstin || '',
@@ -68,7 +128,7 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
     }
   };
 
-  // Populate from editingInvoice if present, otherwise set default party/item
+  // Populate from editingInvoice if present, or set default party/item
   useEffect(() => {
     if (editingInvoice) {
       setSelectedPartyId(editingInvoice.partyId || '');
@@ -103,7 +163,7 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
             name: it.name || '',
             hsn: it.hsn || '',
             qty: it.qty,
-            unit: it.unit || 'PCS',
+            unit: it.unit || 'KGS',
             rate: it.rate,
             discountPct: it.discountPct || 0,
             gstRate: it.gstRate || 18
@@ -121,12 +181,12 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
             id: 'line-1',
             itemId: it.id,
             name: it.name,
-            hsn: it.hsn,
+            hsn: it.hsn || '39232100',
             qty: 250,
-            unit: it.unit,
-            rate: it.baseRate,
+            unit: it.unit || 'KGS',
+            rate: it.baseRate || 125,
             discountPct: 0,
-            gstRate: it.gstRate
+            gstRate: it.gstRate || 18
           }
         ]);
       }
@@ -136,14 +196,14 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
   // Is interstate supply? Gujarat state code is "24"
   const isInterstate = String(partyDetails.stateCode).trim() !== '24';
 
-  // Add line item
+  // Add line item row
   const addLine = () => {
     const defaultItem = items[0] || {
       id: '',
-      name: 'Custom Plastic Product',
+      name: 'Plastic Material',
       hsn: '39232100',
       unit: 'KGS',
-      baseRate: 120,
+      baseRate: 125,
       gstRate: 18
     };
     setLines((prev) => [
@@ -152,37 +212,37 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
         id: `line-${Date.now()}`,
         itemId: defaultItem.id,
         name: defaultItem.name,
-        hsn: defaultItem.hsn,
+        hsn: defaultItem.hsn || '39232100',
         qty: 100,
-        unit: defaultItem.unit,
-        rate: defaultItem.baseRate,
+        unit: defaultItem.unit || 'KGS',
+        rate: defaultItem.baseRate || 125,
         discountPct: 0,
-        gstRate: defaultItem.gstRate
+        gstRate: defaultItem.gstRate || 18
       }
     ]);
   };
 
-  // Remove line item
+  // Remove line item row
   const removeLine = (index) => {
     if (lines.length <= 1) return;
     setLines((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Update line item
+  // Update line item field
   const updateLine = (index, field, value) => {
     setLines((prev) => {
       const copy = [...prev];
       const line = { ...copy[index], [field]: value };
 
-      // If user selected an item from dropdown, auto-populate HSN, unit, base rate, and GST rate
+      // When choosing product from Tally stock items, auto-fill HSN, unit, rate, and GST rate
       if (field === 'itemId') {
         const product = items.find((it) => it.id === value);
         if (product) {
           line.name = product.name;
-          line.hsn = product.hsn;
-          line.unit = product.unit;
-          line.rate = product.baseRate;
-          line.gstRate = product.gstRate;
+          line.hsn = product.hsn || '39232100';
+          line.unit = product.unit || 'KGS';
+          line.rate = product.baseRate || 125;
+          line.gstRate = product.gstRate || 18;
         }
       }
       copy[index] = line;
@@ -190,7 +250,7 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
     });
   };
 
-  // Compute live calculations
+  // Compute live line-item calculations
   let subTotal = 0;
   let totalCgst = 0;
   let totalSgst = 0;
@@ -223,6 +283,8 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
 
     return {
       ...l,
+      gross,
+      discount,
       taxable,
       cgst,
       sgst,
@@ -243,7 +305,7 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
     setSuccessNotice(null);
 
     if (!partyDetails.name.trim()) {
-      setErrorMsg('Please enter or select a customer name.');
+      setErrorMsg('Please select or specify a Customer Name from Tally.');
       return;
     }
 
@@ -288,34 +350,31 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
       }
 
       if (syncImmediately) {
-        // Immediately trigger 1-Click Tally sync
         try {
           const syncRes = await api.syncInvoiceToTally(savedInvoice.id);
           if (syncRes.success) {
             setSuccessNotice({
               type: 'success',
-              text: isEditing
-                ? `✅ Bill #${savedInvoice.invoiceNo} successfully updated & altered in Tally Prime!`
-                : `✅ Bill #${savedInvoice.invoiceNo} generated & synced to Tally Prime Sales Register!`
+              text: `✅ Bill #${savedInvoice.invoiceNo} successfully created & pushed to Tally Sales Register!`
             });
           } else {
             setSuccessNotice({
               type: 'warning',
-              text: `Bill #${savedInvoice.invoiceNo} saved. Tally Note: ${syncRes.error || syncRes.message}`
+              text: `Bill #${savedInvoice.invoiceNo} saved in portal. Note: ${syncRes.error || syncRes.message}`
             });
           }
         } catch (tallyErr) {
           setSuccessNotice({
             type: 'warning',
-            text: `Bill #${savedInvoice.invoiceNo} saved locally. (Tally Prime offline: ${tallyErr.message})`
+            text: `Bill #${savedInvoice.invoiceNo} saved locally in cloud. (Tally Prime offline: ${tallyErr.message})`
           });
         }
       } else {
         setSuccessNotice({
           type: 'success',
           text: isEditing
-            ? `🎉 Bill #${savedInvoice.invoiceNo} successfully updated!`
-            : `🎉 Bill #${savedInvoice.invoiceNo} successfully generated!`
+            ? `🎉 Bill #${savedInvoice.invoiceNo} updated successfully!`
+            : `🎉 Bill #${savedInvoice.invoiceNo} created successfully!`
         });
       }
 
@@ -329,548 +388,607 @@ export default function BillForm({ onBillGenerated, onViewInvoice, parties, item
   };
 
   return (
-    <div className="bill-form-container">
-      {/* Editing Mode Notice */}
-      {isEditing && (
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-            border: '1.5px solid #93c5fd',
-            color: '#1e40af',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            marginBottom: '16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '8px'
-          }}
-        >
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '13.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span>✏️ Editing Bill:</span>
-              <span style={{ color: '#1d4ed8', background: '#bfdbfe', padding: '2px 8px', borderRadius: '6px' }}>
-                {editingInvoice.invoiceNo}
-              </span>
-            </div>
-            <div style={{ fontSize: '12px', color: '#3b82f6', marginTop: '2px' }}>
-              Changes will update local records and alter this voucher in Tally Prime.
-            </div>
-          </div>
-          {onCancelEdit && (
-            <button
-              type="button"
-              onClick={onCancelEdit}
-              style={{
-                background: '#ffffff',
-                border: '1px solid #93c5fd',
-                color: '#1e40af',
-                padding: '5px 12px',
-                borderRadius: '8px',
-                fontWeight: 700,
-                fontSize: '12px',
-                cursor: 'pointer'
-              }}
-            >
-              ✕ Cancel Edit
+    <div className="billing-workbench-container">
+      {/* 1. Header Toolbar Strip */}
+      <div className="workbench-top-bar">
+        <div className="bar-left">
+          <h2>{isEditing ? `Edit Invoice #${editingInvoice.invoiceNo}` : 'Create Tax Invoice'}</h2>
+          <span className="billing-tenant-chip">🏢 Yamuna Plastics · Sales Voucher</span>
+        </div>
+
+        <div className="bar-right">
+          <button
+            type="button"
+            className="btn-sync-tally-pill"
+            onClick={handleSyncFromTally}
+            disabled={syncingTally}
+            title="Pulls only Sundry Debtors and Stock Items from active Tally Prime"
+          >
+            {syncingTally ? '⏳ Fetching Tally...' : '⚡ Fetch from Tally'}
+          </button>
+
+          {isEditing && onCancelEdit && (
+            <button type="button" className="btn-cancel-edit-pill" onClick={onCancelEdit}>
+              ✕ Cancel
             </button>
           )}
         </div>
+      </div>
+
+      {/* Tally Notice / Alerts */}
+      {tallyNotice && (
+        <div className={`workbench-alert ${tallyNotice.type}`}>
+          <span>{tallyNotice.text}</span>
+        </div>
       )}
-      {/* Success / Error Notification */}
+
       {successNotice && (
-        <div
-          style={{
-            background: successNotice.type === 'success' ? '#dcfce7' : '#fef3c7',
-            border: `1.5px solid ${successNotice.type === 'success' ? '#86efac' : '#fde68a'}`,
-            color: successNotice.type === 'success' ? '#15803d' : '#b45309',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            marginBottom: '16px',
-            fontSize: '13px',
-            fontWeight: 700
-          }}
-        >
-          {successNotice.text}
+        <div className={`workbench-alert ${successNotice.type}`}>
+          <span>{successNotice.text}</span>
         </div>
       )}
 
       {errorMsg && (
-        <div
-          style={{
-            background: '#fee2e2',
-            border: '1.5px solid #fca5a5',
-            color: '#b91c1c',
-            padding: '12px 16px',
-            borderRadius: '12px',
-            marginBottom: '16px',
-            fontSize: '13px',
-            fontWeight: 700
-          }}
-        >
-          ⚠️ {errorMsg}
+        <div className="workbench-alert error">
+          <span>⚠️ {errorMsg}</span>
         </div>
       )}
 
-      <div className="form-grid-layout">
-        {/* Left / Main Column: Party & Items */}
-        <div className="form-main-column">
-          {/* 1. Customer & Supply Details Card */}
-          <div className="form-card">
-            <div className="card-title-row">
-              <div className="card-title">
-                <span className="card-title-icon">👤</span>
-                <span>Buyer / Party Details</span>
-              </div>
-              <span className={`card-badge ${isInterstate ? 'badge-interstate' : ''}`}>
-                {isInterstate ? 'Inter-state (IGST 18%)' : 'Intra-state (CGST+SGST)'}
-              </span>
-            </div>
+      {/* 2. Invoice Meta Bar (Invoice No, Dates, Terms) */}
+      <div className="invoice-meta-card">
+        <div className="meta-field-group">
+          <label>Invoice Date</label>
+          <input
+            type="date"
+            className="meta-input"
+            value={invoiceDate}
+            onChange={(e) => setInvoiceDate(e.target.value)}
+          />
+        </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                <span>Select Existing Customer</span>
-                <span className="label-sub">* Required</span>
-              </label>
-              <select
-                className="form-select"
-                value={selectedPartyId}
-                onChange={(e) => handlePartyChange(e.target.value)}
-              >
-                <option value="">-- Choose Customer or Enter Below --</option>
-                {parties.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.city || p.state}) - {p.gstin || 'Unregistered'}
-                  </option>
-                ))}
-              </select>
-            </div>
+        <div className="meta-field-group">
+          <label>Payment Terms</label>
+          <select
+            className="meta-select"
+            value={paymentMode}
+            onChange={(e) => setPaymentMode(e.target.value)}
+          >
+            <option value="Credit 30 Days">Credit 30 Days</option>
+            <option value="Credit 15 Days">Credit 15 Days</option>
+            <option value="Immediate / Cash">Immediate / Cash</option>
+            <option value="Advance Payment">Advance Payment</option>
+          </select>
+        </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                <span>Party / Business Name</span>
-                <span className="label-sub">* Required</span>
-              </label>
-              <input
-                type="text"
-                className="form-input"
-                value={partyDetails.name}
-                onChange={(e) => setPartyDetails({ ...partyDetails, name: e.target.value })}
-                placeholder="e.g. INSTAPLAST INDIA"
-              />
-            </div>
+        <div className="meta-field-group">
+          <label>Due Date</label>
+          <input
+            type="date"
+            className="meta-input"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+          />
+        </div>
 
-            <div className="form-row two-col">
-              <div className="form-group">
-                <label className="form-label">Buyer GSTIN</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={partyDetails.gstin}
-                  onChange={(e) => {
-                    const val = e.target.value.toUpperCase();
-                    setPartyDetails({
-                      ...partyDetails,
-                      gstin: val,
-                      stateCode: val.length >= 2 ? val.slice(0, 2) : partyDetails.stateCode
-                    });
-                  }}
-                  placeholder="24BMZPB0466R1ZC"
-                  maxLength={15}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">State / Place of Supply</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={partyDetails.state}
-                  onChange={(e) => setPartyDetails({ ...partyDetails, state: e.target.value, placeOfSupply: e.target.value })}
-                  placeholder="Gujarat"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Billing &amp; Delivery Address</label>
-              <input
-                type="text"
-                className="form-input"
-                value={partyDetails.address}
-                onChange={(e) => setPartyDetails({ ...partyDetails, address: e.target.value })}
-                placeholder="Plot No., Industrial Estate, Road, City"
-              />
-            </div>
+        <div className="meta-field-group">
+          <label>Tax Treatment</label>
+          <div className="tax-treatment-badge">
+            {isInterstate ? '🌐 Inter-State (IGST 18%)' : '📍 Intra-State (CGST + SGST)'}
           </div>
+        </div>
+      </div>
 
-          {/* 2. Product Line Items */}
-          <div className="form-card">
-            <div className="card-title-row">
-              <div className="card-title">
-                <span className="card-title-icon">📦</span>
-                <span>Plastic Products ({lines.length} items)</span>
+      {/* 3. Customer Selection Section (Fetched directly from Tally) */}
+      <div className="customer-selection-card">
+        <div className="card-section-header">
+          <div className="header-title">
+            <span className="section-icon">🏢</span>
+            <h3>Customer / Buyer Details (from Tally Prime)</h3>
+          </div>
+          <div className="header-actions">
+            <button
+              type="button"
+              className="btn-text-action"
+              onClick={() => setShowCustomParty(!showCustomParty)}
+            >
+              {showCustomParty ? '← Back to Tally Customer List' : '+ Add New / Custom Party'}
+            </button>
+          </div>
+        </div>
+
+        {!showCustomParty ? (
+          <div className="customer-picker-row">
+            <div className="customer-select-wrapper">
+              <div className="picker-header-row">
+                <label className="picker-label">
+                  Select Customer (Sundry Debtors from Tally)
+                  <span className="party-count-chip">{parties.length} in Tally</span>
+                </label>
+                <button
+                  type="button"
+                  className="btn-sync-inline-party"
+                  onClick={handleSyncFromTally}
+                  disabled={syncingTally}
+                  title="Pulls newly created Sundry Debtors from Tally Prime (Port 9000)"
+                >
+                  {syncingTally ? '⏳ Syncing...' : '⚡ Sync from Tally'}
+                </button>
               </div>
-              <button type="button" className="btn-action-outline" onClick={addLine} style={{ padding: '4px 12px', fontSize: '12px' }}>
-                + Add Item
-              </button>
-            </div>
 
-            {computedLines.map((line, idx) => (
-              <div key={line.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <span style={{ fontWeight: 800, fontSize: '13px', color: '#1e3a8a' }}>Product #{idx + 1}</span>
-                  {lines.length > 1 && (
+              {parties.length > 2 && (
+                <div className="customer-search-box">
+                  <span className="search-icon">🔍</span>
+                  <input
+                    type="text"
+                    className="customer-filter-input"
+                    placeholder="Search by customer name, GSTIN, or city..."
+                    value={partySearch}
+                    onChange={(e) => setPartySearch(e.target.value)}
+                  />
+                  {partySearch && (
                     <button
                       type="button"
-                      className="btn-delete-line"
-                      title="Remove Item"
-                      onClick={() => removeLine(idx)}
+                      className="clear-search-btn"
+                      onClick={() => setPartySearch('')}
+                      title="Clear search"
                     >
-                      ✕ Remove
+                      ✕
                     </button>
                   )}
                 </div>
+              )}
 
-                <div className="form-group">
-                  <label className="form-label">Choose Product Catalog</label>
-                  <select
-                    className="form-select"
-                    value={line.itemId}
-                    onChange={(e) => updateLine(idx, 'itemId', e.target.value)}
-                  >
-                    <option value="">-- Choose Product or Type Below --</option>
-                    {items.map((it) => (
-                      <option key={it.id} value={it.id}>
-                        {it.name} [HSN: {it.hsn}] - ₹{it.baseRate}/{it.unit}
-                      </option>
-                    ))}
-                  </select>
+              <select
+                className="customer-select-large"
+                value={selectedPartyId}
+                onChange={(e) => handlePartyChange(e.target.value)}
+              >
+                <option value="">-- Choose Customer from Tally Masters --</option>
+                {filteredParties.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} {p.gstin ? `[GSTIN: ${p.gstin}]` : ''} - {p.state || 'Gujarat'}
+                  </option>
+                ))}
+              </select>
+
+              {filteredParties.length === 0 && parties.length > 0 && (
+                <p className="no-matches-hint">
+                  No customer matches "{partySearch}". Try clearing your search filter.
+                </p>
+              )}
+
+              {parties.length === 0 && (
+                <div className="no-parties-banner">
+                  <span>No customers found yet. Click <strong>"⚡ Sync from Tally"</strong> to pull all Sundry Debtors from Tally Prime.</span>
                 </div>
+              )}
+            </div>
 
-                <div className="form-row three-col">
-                  <div className="form-group">
-                    <label className="form-label">HSN Code</label>
+            {/* Verified Customer Card */}
+            {partyDetails.name && (
+              <div className="customer-verified-card">
+                <div className="verified-header">
+                  <div className="verified-name-group">
+                    <span className="customer-business-name">{partyDetails.name}</span>
+                    <span className="customer-source-pill">Tally Prime · Sundry Debtor</span>
+                  </div>
+                  <span className="badge-gstin-verified">
+                    {partyDetails.gstin ? `GSTIN: ${partyDetails.gstin}` : 'Unregistered Consumer'}
+                  </span>
+                </div>
+                <div className="verified-details-grid">
+                  <div className="detail-item">
+                    <span className="detail-label">Billing Address:</span>
+                    <span className="detail-value">{partyDetails.address || 'GIDC Industrial Area'}</span>
+                  </div>
+                  <div className="detail-item">
+                    <span className="detail-label">State / Place of Supply:</span>
+                    <span className="detail-value">
+                      {partyDetails.state} (Code: {partyDetails.stateCode})
+                    </span>
+                  </div>
+                  {partyDetails.phone && (
+                    <div className="detail-item">
+                      <span className="detail-label">Contact:</span>
+                      <span className="detail-value">{partyDetails.phone}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Manual / Custom Party Entry if needed */
+          <div className="custom-party-form-grid">
+            <div className="form-col-group">
+              <label>Customer / Firm Name <span className="req">*</span></label>
+              <input
+                type="text"
+                className="clean-input"
+                placeholder="e.g. Maruti Granules Pvt. Ltd."
+                value={partyDetails.name}
+                onChange={(e) => setPartyDetails({ ...partyDetails, name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="form-col-group">
+              <label>GSTIN Number</label>
+              <input
+                type="text"
+                className="clean-input"
+                placeholder="24AAFCY1234F1Z5"
+                maxLength={15}
+                value={partyDetails.gstin}
+                onChange={(e) => {
+                  const val = e.target.value.toUpperCase();
+                  setPartyDetails({
+                    ...partyDetails,
+                    gstin: val,
+                    stateCode: val.length >= 2 ? val.slice(0, 2) : partyDetails.stateCode
+                  });
+                }}
+              />
+            </div>
+            <div className="form-col-group full-width">
+              <label>Billing &amp; Delivery Address</label>
+              <input
+                type="text"
+                className="clean-input"
+                placeholder="Plot / Shed No, GIDC Estate, City"
+                value={partyDetails.address}
+                onChange={(e) => setPartyDetails({ ...partyDetails, address: e.target.value })}
+              />
+            </div>
+            <div className="form-col-group">
+              <label>State / Region</label>
+              <input
+                type="text"
+                className="clean-input"
+                value={partyDetails.state}
+                onChange={(e) => setPartyDetails({ ...partyDetails, state: e.target.value, placeOfSupply: e.target.value })}
+              />
+            </div>
+            <div className="form-col-group">
+              <label>Phone / Mobile</label>
+              <input
+                type="text"
+                className="clean-input"
+                placeholder="+91 98250..."
+                value={partyDetails.phone}
+                onChange={(e) => setPartyDetails({ ...partyDetails, phone: e.target.value })}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Products Table (Tabular Data Grid - 1 Row Per Item) */}
+      <div className="products-table-card">
+        <div className="card-section-header">
+          <div className="header-title">
+            <span className="section-icon">📦</span>
+            <h3>Product Line Items ({lines.length} items)</h3>
+          </div>
+          <button type="button" className="btn-table-add-row" onClick={addLine}>
+            + Add Product Row
+          </button>
+        </div>
+
+        <div className="table-responsive-wrapper">
+          <table className="items-data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '40px' }}>#</th>
+                <th style={{ width: '32%' }}>Product Name (from Tally)</th>
+                <th style={{ width: '12%' }}>HSN Code</th>
+                <th style={{ width: '10%' }}>Qty</th>
+                <th style={{ width: '10%' }}>Unit</th>
+                <th style={{ width: '12%' }}>Rate (₹)</th>
+                <th style={{ width: '8%' }}>Disc %</th>
+                <th style={{ width: '12%' }}>Taxable (₹)</th>
+                <th style={{ width: '10%' }}>GST</th>
+                <th style={{ width: '14%' }}>Total (₹)</th>
+                <th style={{ width: '40px' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {computedLines.map((line, idx) => (
+                <tr key={line.id} className="item-table-row">
+                  <td className="row-index">{idx + 1}</td>
+
+                  {/* Product Selector */}
+                  <td>
+                    <select
+                      className="table-cell-select"
+                      value={line.itemId}
+                      onChange={(e) => updateLine(idx, 'itemId', e.target.value)}
+                    >
+                      <option value="">-- Choose Product --</option>
+                      {items.map((it) => (
+                        <option key={it.id} value={it.id}>
+                          {it.name} [{it.unit || 'KGS'}] - ₹{it.baseRate}
+                        </option>
+                      ))}
+                    </select>
+                    {!line.itemId && (
+                      <input
+                        type="text"
+                        className="table-cell-input-sub"
+                        placeholder="Or custom item name"
+                        value={line.name}
+                        onChange={(e) => updateLine(idx, 'name', e.target.value)}
+                      />
+                    )}
+                  </td>
+
+                  {/* HSN */}
+                  <td>
                     <input
                       type="text"
-                      className="form-input"
+                      className="table-cell-input"
                       value={line.hsn}
                       onChange={(e) => updateLine(idx, 'hsn', e.target.value)}
                     />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Quantity</label>
+                  </td>
+
+                  {/* Qty */}
+                  <td>
                     <input
                       type="number"
                       min="1"
                       step="any"
-                      className="form-input"
+                      className="table-cell-input bold"
                       value={line.qty}
                       onChange={(e) => updateLine(idx, 'qty', e.target.value)}
                     />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Unit</label>
+                  </td>
+
+                  {/* Unit */}
+                  <td>
                     <select
-                      className="form-select"
+                      className="table-cell-select"
                       value={line.unit}
                       onChange={(e) => updateLine(idx, 'unit', e.target.value)}
                     >
-                      <option value="PCS">PCS</option>
                       <option value="KGS">KGS</option>
-                      <option value="BAGS">BAGS</option>
+                      <option value="PCS">PCS</option>
                       <option value="ROLLS">ROLLS</option>
+                      <option value="BAGS">BAGS</option>
+                      <option value="BOX">BOX</option>
                       <option value="MT">MT</option>
                     </select>
-                  </div>
-                </div>
+                  </td>
 
-                <div className="form-row three-col">
-                  <div className="form-group">
-                    <label className="form-label">Rate (₹ / {line.unit})</label>
+                  {/* Rate */}
+                  <td>
                     <input
                       type="number"
                       step="0.01"
-                      className="form-input"
+                      className="table-cell-input font-mono"
                       value={line.rate}
                       onChange={(e) => updateLine(idx, 'rate', e.target.value)}
                     />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Disc %</label>
+                  </td>
+
+                  {/* Disc % */}
+                  <td>
                     <input
                       type="number"
                       min="0"
                       max="100"
                       step="0.5"
-                      className="form-input"
+                      className="table-cell-input"
                       value={line.discountPct}
                       onChange={(e) => updateLine(idx, 'discountPct', e.target.value)}
                     />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">GST %</label>
+                  </td>
+
+                  {/* Taxable Amt */}
+                  <td className="table-cell-numeric">
+                    {formatINR(line.taxable)}
+                  </td>
+
+                  {/* GST % */}
+                  <td>
                     <select
-                      className="form-select"
+                      className="table-cell-select"
                       value={line.gstRate}
                       onChange={(e) => updateLine(idx, 'gstRate', Number(e.target.value))}
                     >
-                      <option value="18">18% (Standard Goods)</option>
-                      <option value="12">12%</option>
-                      <option value="5">5%</option>
-                      <option value="28">28%</option>
+                      <option value={18}>18%</option>
+                      <option value={12}>12%</option>
+                      <option value={5}>5%</option>
+                      <option value={0}>0%</option>
+                      <option value={28}>28%</option>
                     </select>
-                  </div>
-                </div>
+                  </td>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1' }}>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>
-                    Taxable: {formatINR(line.taxable)} | Tax: {formatINR(line.cgst + line.sgst + line.igst)}
-                  </span>
-                  <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>{formatINR(line.rowTotal)}</span>
-                </div>
-              </div>
-            ))}
+                  {/* Row Total */}
+                  <td className="table-cell-numeric bold highlight">
+                    {formatINR(line.rowTotal)}
+                  </td>
 
-            <button type="button" className="btn-add-line" onClick={addLine}>
-              <span>+ Add Another Plastic Product</span>
-            </button>
-          </div>
+                  {/* Delete Row */}
+                  <td>
+                    {lines.length > 1 && (
+                      <button
+                        type="button"
+                        className="btn-table-row-delete"
+                        onClick={() => removeLine(idx)}
+                        title="Delete Line"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-          {/* 3. Additional Charges & Notes */}
-          <div className="form-card">
-            <div className="card-title-row">
-              <div className="card-title">
-                <span className="card-title-icon">📝</span>
-                <span>Additional Notes &amp; Freight</span>
-              </div>
-            </div>
+        <div className="table-footer-action-bar">
+          <button type="button" className="btn-add-line-outline" onClick={addLine}>
+            + Add Another Product
+          </button>
+        </div>
+      </div>
 
-            <div className="form-group">
-              <label className="form-label">Freight / Delivery Charges (₹)</label>
-              <input
-                type="number"
-                min="0"
-                step="100"
-                className="form-input"
-                value={freightCharges}
-                onChange={(e) => setFreightCharges(Number(e.target.value) || 0)}
-                placeholder="0.00"
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Invoice Notes / Dispatch Instructions</label>
-              <input
-                type="text"
-                className="form-input"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="e.g. Standard 50-micron polybags delivered to Himmatnagar plant."
-              />
-            </div>
+      {/* 5. Dispatch, Transport & E-Way Bill Strip */}
+      <div className="dispatch-strip-card">
+        <div className="card-section-header">
+          <div className="header-title">
+            <span className="section-icon">🚚</span>
+            <h3>Dispatch &amp; Transport Details (e-Way Bill Option 1)</h3>
           </div>
         </div>
 
-        {/* Right / Sidebar Column: Transport, Order Meta & Summary */}
-        <div className="form-sidebar-column">
-          <div className="sticky-sidebar">
-            {/* 4. Bill Info & Transport Card */}
-            <div className="form-card">
-              <div className="card-title-row">
-                <div className="card-title">
-                  <span className="card-title-icon">🚚</span>
-                  <span>Transport &amp; Dispatch</span>
-                </div>
-              </div>
-
-              <div className="form-row two-col">
-                <div className="form-group">
-                  <label className="form-label">Invoice Date</label>
-                  <input
-                    type="date"
-                    className="form-input"
-                    value={invoiceDate}
-                    onChange={(e) => setInvoiceDate(e.target.value)}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Payment Terms</label>
-                  <select
-                    className="form-select"
-                    value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value)}
-                  >
-                    <option value="Credit 30 Days">Credit (30 Days)</option>
-                    <option value="Credit 15 Days">Credit (15 Days)</option>
-                    <option value="Cash on Delivery">Cash on Delivery</option>
-                    <option value="NEFT / Advance">NEFT / RTGS Advance</option>
-                    <option value="UPI / QR Code">Immediate UPI</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row two-col">
-                <div className="form-group">
-                  <label className="form-label">Vehicle No.</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={vehicleNo}
-                    onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
-                    placeholder="GJ-01-AB-1880"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Transporter</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={transporter}
-                    onChange={(e) => setTransporter(e.target.value)}
-                    placeholder="Patel Freight"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row two-col">
-                <div className="form-group">
-                  <label className="form-label">Delivery Note No.</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={deliveryNote}
-                    onChange={(e) => setDeliveryNote(e.target.value)}
-                    placeholder="188"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Destination</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={destination}
-                    onChange={(e) => setDestination(e.target.value)}
-                    placeholder="Himmatnagar"
-                  />
-                </div>
-              </div>
-
-              <div className="form-row two-col">
-                <div className="form-group">
-                  <label className="form-label">Approx Distance (KM)</label>
-                  <input
-                    type="number"
-                    className="form-input"
-                    value={distance}
-                    onChange={(e) => setDistance(e.target.value)}
-                    placeholder="85"
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">e-Way Bill No.</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={ewayBillNo}
-                    onChange={(e) => setEwayBillNo(e.target.value)}
-                    placeholder="Auto or 12-digit #"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* 5. Live Bill Financial Summary */}
-            <div className="summary-card highlight">
-              <div className="card-title-row" style={{ borderBottom: 'none', marginBottom: '8px', paddingBottom: '0' }}>
-                <div className="card-title">
-                  <span className="card-title-icon">💳</span>
-                  <span>Invoice Financials</span>
-                </div>
-              </div>
-
-              <div className="summary-row">
-                <span>Sub-Total (Taxable):</span>
-                <span style={{ fontWeight: 700 }}>{formatINR(subTotal)}</span>
-              </div>
-
-              {!isInterstate ? (
-                <>
-                  <div className="summary-row">
-                    <span>CGST (9% Output):</span>
-                    <span style={{ fontWeight: 600, color: '#059669' }}>+{formatINR(totalCgst)}</span>
-                  </div>
-                  <div className="summary-row">
-                    <span>SGST (9% Output):</span>
-                    <span style={{ fontWeight: 600, color: '#059669' }}>+{formatINR(totalSgst)}</span>
-                  </div>
-                </>
-              ) : (
-                <div className="summary-row">
-                  <span>IGST (18% Integrated):</span>
-                  <span style={{ fontWeight: 600, color: '#0284c7' }}>+{formatINR(totalIgst)}</span>
-                </div>
-              )}
-
-              {freight > 0 && (
-                <div className="summary-row">
-                  <span>Freight Charges:</span>
-                  <span>+{formatINR(freight)}</span>
-                </div>
-              )}
-
-              {Math.abs(roundOff) > 0 && (
-                <div className="summary-row">
-                  <span>Round Off:</span>
-                  <span>{roundOff > 0 ? `+${roundOff.toFixed(2)}` : roundOff.toFixed(2)}</span>
-                </div>
-              )}
-
-              <div className="summary-row total">
-                <span className="total-label">GRAND TOTAL:</span>
-                <span className="total-amount">{formatINR(grandTotal)}</span>
-              </div>
-
-              <div className="amount-words-box">
-                {amountWords}
-              </div>
-
-              {/* 6. Primary Action Buttons */}
-              <div className="form-actions-group">
-                <button
-                  type="button"
-                  className="btn-action-primary"
-                  disabled={saving}
-                  onClick={() => handleGenerateBill(true)}
-                >
-                  <span>
-                    {saving
-                      ? 'Communicating with Tally...'
-                      : (isEditing ? '🔌 Update & Push to Tally (1-Click)' : '⚡ Save & Push to Tally (1-Click)')}
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  className="btn-action-secondary"
-                  disabled={saving}
-                  onClick={() => handleGenerateBill(false)}
-                >
-                  <span>{saving ? 'Processing...' : (isEditing ? '💾 Save Updates Only' : '📄 Save & View 1:1 Print')}</span>
-                </button>
-
-                {isEditing && onCancelEdit && (
-                  <button
-                    type="button"
-                    className="btn-action-outline"
-                    onClick={onCancelEdit}
-                  >
-                    ✕ Discard Changes &amp; Exit Edit Mode
-                  </button>
-                )}
-              </div>
-            </div>
+        <div className="dispatch-grid-four">
+          <div className="dispatch-col">
+            <label>Vehicle Number</label>
+            <input
+              type="text"
+              className="clean-input"
+              placeholder="e.g. GJ-03-BW-4412"
+              value={vehicleNo}
+              onChange={(e) => setVehicleNo(e.target.value.toUpperCase())}
+            />
           </div>
+
+          <div className="dispatch-col">
+            <label>Transporter Name</label>
+            <input
+              type="text"
+              className="clean-input"
+              placeholder="e.g. VRL Logistics"
+              value={transporter}
+              onChange={(e) => setTransporter(e.target.value)}
+            />
+          </div>
+
+          <div className="dispatch-col">
+            <label>Approx Distance (km)</label>
+            <input
+              type="number"
+              className="clean-input"
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+            />
+          </div>
+
+          <div className="dispatch-col">
+            <label>Delivery Note / Challan No.</label>
+            <input
+              type="text"
+              className="clean-input"
+              placeholder="e.g. DN-186"
+              value={deliveryNote}
+              onChange={(e) => setDeliveryNote(e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 6. Invoice Summary & Grand Total Card */}
+      <div className="invoice-summary-card">
+        <div className="summary-left-col">
+          <div className="summary-group">
+            <label>Freight / Delivery Charges (₹)</label>
+            <input
+              type="number"
+              className="clean-input"
+              style={{ maxWidth: '240px' }}
+              value={freightCharges}
+              onChange={(e) => setFreightCharges(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="summary-group" style={{ marginTop: '14px' }}>
+            <label>Order Notes / Terms</label>
+            <textarea
+              className="clean-textarea"
+              rows={2}
+              placeholder="Goods once sold will not be taken back. Interest @18% will be charged if payment is delayed."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+            ></textarea>
+          </div>
+
+          <div className="amount-words-banner">
+            <span className="words-label">Amount in Words:</span>
+            <span className="words-text">{amountWords}</span>
+          </div>
+        </div>
+
+        <div className="summary-right-col">
+          <div className="summary-row">
+            <span>Taxable Subtotal:</span>
+            <strong>{formatINR(subTotal)}</strong>
+          </div>
+
+          {!isInterstate ? (
+            <>
+              <div className="summary-row">
+                <span>Central GST (CGST):</span>
+                <span>{formatINR(totalCgst)}</span>
+              </div>
+              <div className="summary-row">
+                <span>State GST (SGST):</span>
+                <span>{formatINR(totalSgst)}</span>
+              </div>
+            </>
+          ) : (
+            <div className="summary-row">
+              <span>Integrated GST (IGST 18%):</span>
+              <span>{formatINR(totalIgst)}</span>
+            </div>
+          )}
+
+          {freight > 0 && (
+            <div className="summary-row">
+              <span>Freight / Shipping:</span>
+              <span>{formatINR(freight)}</span>
+            </div>
+          )}
+
+          {roundOff !== 0 && (
+            <div className="summary-row">
+              <span>Round Off:</span>
+              <span>{roundOff > 0 ? `+${roundOff.toFixed(2)}` : roundOff.toFixed(2)}</span>
+            </div>
+          )}
+
+          <div className="summary-grand-total-row">
+            <span>Grand Total:</span>
+            <span className="grand-total-value">{formatINR(grandTotal)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 7. Bottom Fixed / Sticky Action Bar */}
+      <div className="workbench-bottom-actions">
+        <div className="action-hint">
+          <span>⚡ Auto Option 1: Zero-Click Tally Sync &amp; e-Way Bill Active</span>
+        </div>
+
+        <div className="action-buttons-group">
+          <button
+            type="button"
+            className="btn-action-tally-push"
+            onClick={() => handleGenerateBill(true)}
+            disabled={saving}
+          >
+            {saving ? '⏳ Saving & Syncing...' : '⚡ Save & Push to Tally (1-Click)'}
+          </button>
+
+          <button
+            type="button"
+            className="btn-action-save-local"
+            onClick={() => handleGenerateBill(false)}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : '💾 Save Bill (Local)'}
+          </button>
         </div>
       </div>
     </div>

@@ -3,12 +3,13 @@
     "id": "ITEM-000",
     "name": "T. C. INNER",
     "description": "Plastic Thread / Inner Component for Packaging (HSN 39235010)",
-    "hsn": "39235010",
+    "hsn": "39232100",
     "unit": "PCS",
-    "baseRate": 0.22,
+    "baseRate": 125,
     "gstRate": 18,
     "stockQty": 100000,
-    "category": "Components"
+    "category": "Components",
+    "source": "Tally Prime"
   },
   {
     "id": "ITEM-001",
@@ -16,43 +17,47 @@
     "description": "High Density Polyethylene transparent barrier liner bags",
     "hsn": "39232100",
     "unit": "KGS",
-    "baseRate": 132.00,
+    "baseRate": 125,
     "gstRate": 18,
     "stockQty": 3450,
-    "category": "Bags"
+    "category": "Bags",
+    "source": "Tally Prime"
   },
   {
     "id": "ITEM-002",
     "name": "LDPE Heavy Duty Packing Rolls (100 Micron)",
     "description": "Low Density Polyethylene wide industrial wrapping roll",
-    "hsn": "39201019",
+    "hsn": "39232100",
     "unit": "KGS",
-    "baseRate": 145.00,
+    "baseRate": 125,
     "gstRate": 18,
     "stockQty": 2800,
-    "category": "Rolls"
+    "category": "Rolls",
+    "source": "Tally Prime"
   },
   {
     "id": "ITEM-003",
     "name": "PP Woven Sacks with Liner (50kg capacity)",
     "description": "Polypropylene woven bags for fertilizer, chemicals and grains",
-    "hsn": "63053300",
+    "hsn": "39232100",
     "unit": "BAGS",
-    "baseRate": 18.50,
+    "baseRate": 125,
     "gstRate": 12,
     "stockQty": 15000,
-    "category": "Sacks"
+    "category": "Sacks",
+    "source": "Tally Prime"
   },
   {
     "id": "ITEM-004",
     "name": "Virgin HDPE Blow Moulding Granules",
     "description": "Prime grade polymer resin pellets for container manufacturing",
-    "hsn": "39012000",
+    "hsn": "39232100",
     "unit": "KGS",
-    "baseRate": 110.00,
+    "baseRate": 125,
     "gstRate": 18,
     "stockQty": 8500,
-    "category": "Granules"
+    "category": "Granules",
+    "source": "Tally Prime"
   },
   {
     "id": "ITEM-005",
@@ -60,7 +65,7 @@
     "description": "Biaxially Oriented PP printed pouches with side gusset",
     "hsn": "39232990",
     "unit": "PCS",
-    "baseRate": 4.80,
+    "baseRate": 4.8,
     "gstRate": 18,
     "stockQty": 45000,
     "category": "Pouches"
@@ -71,7 +76,7 @@
     "description": "Cast film pallet wrapping roll, 500mm width x 300m length",
     "hsn": "39201012",
     "unit": "ROLLS",
-    "baseRate": 380.00,
+    "baseRate": 380,
     "gstRate": 18,
     "stockQty": 1200,
     "category": "Films"
@@ -80,12 +85,13 @@
     "id": "ITEM-007",
     "name": "Black UV Agriculture Mulch Film (25 Micron)",
     "description": "Agricultural soil moisture retention and weed control film",
-    "hsn": "39201099",
+    "hsn": "39232100",
     "unit": "ROLLS",
-    "baseRate": 1650.00,
+    "baseRate": 125,
     "gstRate": 18,
     "stockQty": 450,
-    "category": "Films"
+    "category": "Films",
+    "source": "Tally Prime"
   },
   {
     "id": "ITEM-008",
@@ -93,9 +99,21 @@
     "description": "Reprocessed industrial grade black PP moulding granules",
     "hsn": "39021000",
     "unit": "KGS",
-    "baseRate": 88.00,
+    "baseRate": 88,
     "gstRate": 18,
     "stockQty": 6200,
     "category": "Granules"
+  },
+  {
+    "id": "ITEM-1790411043305-18",
+    "name": "HDPE Plain Liner Bags",
+    "description": "HDPE Plain Liner Bags",
+    "hsn": "39232100",
+    "unit": "KGS",
+    "baseRate": 125,
+    "gstRate": 18,
+    "stockQty": 1000,
+    "category": "Plastic Products",
+    "source": "Tally Prime"
   }
 ]

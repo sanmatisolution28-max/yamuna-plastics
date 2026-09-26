@@ -346,6 +346,7 @@ export default function App() {
                 onCancelEdit={() => setEditingInvoice(null)}
                 onBillGenerated={handleBillGenerated}
                 onViewInvoice={(inv) => setViewingInvoice(inv)}
+                onRefresh={loadData}
               />
             )}
 

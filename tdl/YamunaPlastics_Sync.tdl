@@ -9,8 +9,9 @@
 ;; Variable Definitions (Persistent across Tally restarts)
 ;; -------------------------------------------------------------------------
 [System: Variable]
-    YP_Var_ApiHost  : "https://yamuna.sanmatisolution.com"
-    YP_Var_FilePath : "C:\TallyPrime\YamunaPlastics_Import.xml"
+    YP_Var_ApiHost     : "https://yamuna.sanmatisolution.com"
+    YP_Var_FilePath    : "C:\TallyPrime\YamunaPlastics_Import.xml"
+    YP_Var_MastersPath : "C:\TallyPrime\YamunaPlastics_Masters.xml"
 
 [Variable: YP_Var_ApiHost]
     Type       : String
@@ -20,11 +21,17 @@
     Type       : String
     Persistent : Yes
 
+[Variable: YP_Var_MastersPath]
+    Type       : String
+    Persistent : Yes
+
 [System: Formula]
-    YP_EffectiveAPIHost : if $$IsEmpty:##YP_Var_ApiHost then "https://yamuna.sanmatisolution.com" else ##YP_Var_ApiHost
-    YP_API_ExportXML    : @@YP_EffectiveAPIHost + "/api/tally/export-xml"
-    YP_API_Status       : @@YP_EffectiveAPIHost + "/api/tally/status"
-    YP_EffectiveFilePath: if $$IsEmpty:##YP_Var_FilePath then "C:\TallyPrime\YamunaPlastics_Import.xml" else ##YP_Var_FilePath
+    YP_EffectiveAPIHost    : if $$IsEmpty:##YP_Var_ApiHost then "https://yamuna.sanmatisolution.com" else ##YP_Var_ApiHost
+    YP_API_ExportXML       : @@YP_EffectiveAPIHost + "/api/tally/export-xml"
+    YP_API_Status          : @@YP_EffectiveAPIHost + "/api/tally/status"
+    YP_API_MastersPush     : @@YP_EffectiveAPIHost + "/api/masters/tally-push"
+    YP_EffectiveFilePath   : if $$IsEmpty:##YP_Var_FilePath then "C:\TallyPrime\YamunaPlastics_Import.xml" else ##YP_Var_FilePath
+    YP_EffectiveMastersPath: if $$IsEmpty:##YP_Var_MastersPath then "C:\TallyPrime\YamunaPlastics_Masters.xml" else ##YP_Var_MastersPath
 
 ;; =========================================================================
 ;; SECTION 1: Gateway of Tally Menu Integration
@@ -39,10 +46,11 @@
 
     ;; Menu Items
     Key Item: "Sync All Pending Bills from Live Portal" : S : Call    : YP_Fn_SyncFromMobileAPI
-    Key Item: "Import Local XML File"                  : I : Call    : YP_Fn_ImportLocalXMLFile
-    Key Item: "Yamuna Plastics Sync Dashboard"         : D : Display : YP_SyncDashboardReport
-    Key Item: "Configure Live Cloud Portal URL"        : C : Modify  : YP_ConfigReport
-    Key Item: "Open Sales Register"                    : V : Display : Sales Register
+    Key Item: "Export Customers & Stock (Masters XML)"  : E : Call    : YP_Fn_ExportMastersLocal
+    Key Item: "Import Local Bills XML File"             : I : Call    : YP_Fn_ImportLocalXMLFile
+    Key Item: "Yamuna Plastics Sync Dashboard"          : D : Display : YP_SyncDashboardReport
+    Key Item: "Configure Live Cloud Portal URL"         : C : Modify  : YP_ConfigReport
+    Key Item: "Open Sales Register"                     : V : Display : Sales Register
 
 ;; =========================================================================
 ;; SECTION 2: TDL Functions for Sync & Import
@@ -74,6 +82,50 @@
     05 : Display : Day Book
     06 : Return
 
+;; -------------------------------------------------------------------------
+;; Export Masters (Sundry Debtors & Stock Items Only)
+;; -------------------------------------------------------------------------
+[Function: YP_Fn_ExportMastersLocal]
+    Variable: vMastersPath : String
+    Variable: vMsg         : String
+
+    01 : Set : vMastersPath : @@YP_EffectiveMastersPath
+    02 : Msg Box : "Yamuna Plastics Masters" : "Exporting Customers (Sundry Debtors) and Stock Items to: " + ##vMastersPath + "..."
+    03 : Export Report : YP_MastersExportReport : "XML" : ##vMastersPath
+    04 : Set : vMsg : "Export Completed! File saved to: " + ##vMastersPath + ". You can now import this file on https://yamuna.sanmatisolution.com or use 1-Click Fetch."
+    05 : Msg Box : "Yamuna Plastics - Export Success" : ##vMsg
+    06 : Return
+
+;; =========================================================================
+;; SECTION 2B: Masters Filtering Collections (Sundry Debtors & Items ONLY)
+;; =========================================================================
+
+[Collection: YP_DebtorsCollection]
+    Type        : Ledger
+    ChildOf     : $$GroupSundryDebtors
+    BelongsTo   : Yes
+    Fetch       : Name, Parent, PartyGSTIN, StateName, LedStateName, Address, Pincode, LedgerPhone, LedgerMobile
+
+[Collection: YP_StockCollection]
+    Type        : StockItem
+    Fetch       : Name, BaseUnits, ClosingRate, OpeningRate, HSNCode, HSNDetails
+
+[Report: YP_MastersExportReport]
+    Form        : YP_MastersExportForm
+
+[Form: YP_MastersExportForm]
+    Part        : YP_MastersExportPart
+
+[Part: YP_MastersExportPart]
+    Line        : YP_MastersExportLine
+    Repeat      : YP_MastersExportLine : YP_DebtorsCollection
+
+[Line: YP_MastersExportLine]
+    Field       : YP_Fld_LedgerExportXml
+
+[Field: YP_Fld_LedgerExportXml]
+    Set as      : "<LEDGER NAME=" + $$String:$Name + '"><PARENT>Sundry Debtors</PARENT><PARTYGSTIN>' + $$String:$PartyGSTIN + '</PARTYGSTIN><STATENAME>' + $$String:$StateName + '</STATENAME><ADDRESS>' + $$String:$Address + '</ADDRESS><PINCODE>' + $$String:$Pincode + '</PINCODE><LEDGERPHONE>' + $$String:$LedgerPhone + '</LEDGERPHONE></LEDGER>'
+
 ;; =========================================================================
 ;; SECTION 3: Dashboard Report & Screen
 ;; =========================================================================
@@ -85,7 +137,7 @@
 [Form: YP_SyncDashboardForm]
     Part        : YP_DashboardTitlePart, YP_DashboardInfoPart, YP_DashboardActionPart
     Background  : White
-    Button      : YP_Btn_SyncNow, YP_Btn_ImportFile
+    Button      : YP_Btn_SyncNow, YP_Btn_ImportFile, YP_Btn_ExportMasters
 
 [Part: YP_DashboardTitlePart]
     Line        : YP_DashTitleLine, YP_DashSubTitleLine
@@ -165,7 +217,7 @@
     Field       : YP_Fld_ActionHelp
 
 [Field: YP_Fld_ActionHelp]
-    Set as      : "Press [F6: Sync API] to pull pending bills from Cloud, or [F7: Import File] to load from disk."
+    Set as      : "Press [F6: Sync API] to pull bills, [F7: Import File] for bills, or [F8: Export Masters] to export Debtors & Stock."
     Style       : Normal Bold
     Color       : Dark Green
     Align       : Center
@@ -180,6 +232,11 @@
     Title       : "F7: Import File"
     Key         : F7
     Action      : Call : YP_Fn_ImportLocalXMLFile
+
+[Button: YP_Btn_ExportMasters]
+    Title       : "F8: Export Masters"
+    Key         : F8
+    Action      : Call : YP_Fn_ExportMastersLocal
 
 ;; =========================================================================
 ;; SECTION 4: Configuration Settings Screen

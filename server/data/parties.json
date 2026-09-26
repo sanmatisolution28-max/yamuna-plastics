@@ -14,7 +14,8 @@
     "gstin": "24BMZPB0466R1ZC",
     "pan": "BMZPB0466R",
     "creditDays": 30,
-    "openingBalance": 0.00
+    "openingBalance": 0,
+    "source": "Tally Prime"
   },
   {
     "id": "PART-001",
@@ -30,7 +31,8 @@
     "gstin": "24AABCG9821E1ZQ",
     "pan": "AABCG9821E",
     "creditDays": 30,
-    "openingBalance": 142500.00
+    "openingBalance": 142500,
+    "source": "Tally Prime"
   },
   {
     "id": "PART-002",
@@ -43,10 +45,11 @@
     "state": "Gujarat",
     "stateCode": "24",
     "pincode": "395002",
-    "gstin": "24AARTS4512D1ZR",
+    "gstin": "24AAECS4912J1ZG",
     "pan": "AARTS4512D",
     "creditDays": 15,
-    "openingBalance": 86000.00
+    "openingBalance": 86000,
+    "source": "Tally Prime"
   },
   {
     "id": "PART-003",
@@ -62,7 +65,7 @@
     "gstin": "24AAMCP3321B1ZM",
     "pan": "AAMCP3321B",
     "creditDays": 45,
-    "openingBalance": 210000.00
+    "openingBalance": 210000
   },
   {
     "id": "PART-004",
@@ -78,7 +81,8 @@
     "gstin": "08AAAFM5514P1Z3",
     "pan": "AAAFM5514P",
     "creditDays": 30,
-    "openingBalance": 0.00
+    "openingBalance": 0,
+    "source": "Tally Prime"
   },
   {
     "id": "PART-005",
@@ -91,10 +95,11 @@
     "state": "Maharashtra",
     "stateCode": "27",
     "pincode": "401506",
-    "gstin": "27AABCB8819Q1ZN",
+    "gstin": "27AABCB8821R1Z8",
     "pan": "AABCB8819Q",
     "creditDays": 30,
-    "openingBalance": 64000.00
+    "openingBalance": 64000,
+    "source": "Tally Prime"
   },
   {
     "id": "PART-006",
@@ -110,6 +115,134 @@
     "gstin": "24AADFM1234L1ZY",
     "pan": "AADFM1234L",
     "creditDays": 15,
-    "openingBalance": 45000.00
+    "openingBalance": 45000
+  },
+  {
+    "id": "PART-1790411016214-333",
+    "name": "Freight & Delivery Charges",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-402",
+    "name": "Interstate Sales - Plastic Goods (18%)",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-249",
+    "name": "Output CGST 9%",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-468",
+    "name": "Output IGST 18%",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-865",
+    "name": "Output SGST 9%",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-660",
+    "name": "Round Off",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-489",
+    "name": "Sales - Plastic Goods (18%)",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
+  },
+  {
+    "id": "PART-1790411016214-354",
+    "name": "The Karnavati Co-Op. Bank Ltd.",
+    "contactPerson": "",
+    "phone": "",
+    "email": "",
+    "address": "",
+    "city": "",
+    "state": "Gujarat",
+    "stateCode": "24",
+    "pincode": "",
+    "gstin": "",
+    "pan": "",
+    "creditDays": 30,
+    "openingBalance": 0
   }
 ]
