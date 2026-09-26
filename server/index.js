@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import invoicesRouter from './routes/invoices.js';
 import tallyRouter from './routes/tally.js';
 import mastersRouter from './routes/masters.js';
+import authRouter from './routes/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +26,7 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+app.use('/api/auth', authRouter);
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/tally', tallyRouter);
 app.use('/api', mastersRouter);

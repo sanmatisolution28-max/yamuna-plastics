@@ -5,10 +5,22 @@ import TallySync from './components/TallySync';
 import PartyMaster from './components/PartyMaster';
 import ItemCatalog from './components/ItemCatalog';
 import InvoiceModal from './components/InvoiceModal';
+import LoginModal from './components/LoginModal';
+import ProfileModal from './components/ProfileModal';
 import { api } from './utils/api';
 import { formatINR } from './utils/numberToWords';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('yp_user');
+      const token = localStorage.getItem('yp_auth_token');
+      return saved && token ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [activeTab, setActiveTab] = useState('new-bill'); // new-bill | invoices | tally | parties | items
   const [invoices, setInvoices] = useState([]);
   const [parties, setParties] = useState([]);
@@ -98,6 +110,18 @@ export default function App() {
     );
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('yp_auth_token');
+    localStorage.removeItem('yp_user');
+    setCurrentUser(null);
+    setShowProfileModal(false);
+  };
+
+  // If not logged in, show secure login page
+  if (!currentUser) {
+    return <LoginModal onLoginSuccess={(u) => setCurrentUser(u)} />;
+  }
+
   // Compute live KPI metrics
   const totalBillsCount = invoices.length;
   const pendingCount = invoices.filter((i) => !i.tallySync?.synced).length;
@@ -166,6 +190,20 @@ export default function App() {
             >
               <span>+ Create Bill</span>
             </button>
+
+            {/* Profile & Security (Password Update) */}
+            <div
+              className="user-profile-badge"
+              onClick={() => setShowProfileModal(true)}
+              title="Click to view profile & change password"
+            >
+              <span className="user-avatar">👤</span>
+              <div className="user-info-text">
+                <span className="user-name">{currentUser?.name || currentUser?.username || 'Admin'}</span>
+                <span className="user-role">{currentUser?.role || 'Admin'}</span>
+              </div>
+              <span className="user-dropdown-arrow">⚙️</span>
+            </div>
           </div>
         </div>
       </header>
@@ -317,6 +355,7 @@ export default function App() {
               <PartyMaster
                 parties={parties}
                 onPartyAdded={(p) => setParties((prev) => [...prev, p])}
+                onRefresh={loadData}
               />
             )}
 
@@ -324,6 +363,7 @@ export default function App() {
               <ItemCatalog
                 items={items}
                 onItemAdded={(it) => setItems((prev) => [...prev, it])}
+                onRefresh={loadData}
               />
             )}
           </>
@@ -337,6 +377,15 @@ export default function App() {
           settings={settings}
           onClose={() => setViewingInvoice(null)}
           onSynced={handleInvoiceSynced}
+        />
+      )}
+
+      {/* 6. User Profile & Password Change Modal */}
+      {showProfileModal && (
+        <ProfileModal
+          user={currentUser}
+          onClose={() => setShowProfileModal(false)}
+          onLogout={handleLogout}
         />
       )}
     </div>

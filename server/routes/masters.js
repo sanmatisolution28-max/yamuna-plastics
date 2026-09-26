@@ -121,4 +121,202 @@ router.put('/settings', async (req, res) => {
   }
 });
 
+// Import Tally Masters XML (Ledgers & Stock Items)
+router.post('/masters/import-tally-xml', async (req, res) => {
+  try {
+    const xml = typeof req.body === 'string' ? req.body : (req.body.xml || '');
+    if (!xml || !xml.trim()) {
+      return res.status(400).json({ success: false, error: 'No XML content provided' });
+    }
+
+    const currentParties = await readJson(PARTIES_FILE, []);
+    const currentItems = await readJson(ITEMS_FILE, []);
+
+    let newPartiesCount = 0;
+    let newItemsCount = 0;
+
+    // 1. Parse Ledgers (Sundry Debtors)
+    const ledgerRegex = /<LEDGER\s+NAME="([^"]+)"[^>]*>([\s\S]*?)<\/LEDGER>/gi;
+    let lMatch;
+    while ((lMatch = ledgerRegex.exec(xml)) !== null) {
+      const name = lMatch[1].replace(/&amp;/g, '&').trim();
+      const content = lMatch[2];
+
+      // Extract GSTIN
+      const gstinMatch = content.match(/<PARTYGSTIN>([^<]+)<\/PARTYGSTIN>/i);
+      const gstin = gstinMatch ? gstinMatch[1].trim() : '';
+
+      // Extract State
+      const stateMatch = content.match(/<STATENAME>([^<]+)<\/STATENAME>/i);
+      const state = stateMatch ? stateMatch[1].trim() : 'Gujarat';
+
+      // Extract Address lines
+      const addressLines = [];
+      const addrRegex = /<ADDRESS>([^<]+)<\/ADDRESS>/gi;
+      let aM;
+      while ((aM = addrRegex.exec(content)) !== null) {
+        addressLines.push(aM[1].replace(/&amp;/g, '&').trim());
+      }
+
+      // Check if already exists
+      const existingIdx = currentParties.findIndex((p) => p.name.toLowerCase() === name.toLowerCase());
+      if (existingIdx >= 0) {
+        currentParties[existingIdx] = {
+          ...currentParties[existingIdx],
+          gstin: gstin || currentParties[existingIdx].gstin,
+          state: state || currentParties[existingIdx].state,
+          address: addressLines.join(', ') || currentParties[existingIdx].address
+        };
+      } else {
+        currentParties.push({
+          id: `PART-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          name,
+          contactPerson: '',
+          phone: '',
+          email: '',
+          address: addressLines.join(', ') || '',
+          city: '',
+          state,
+          stateCode: gstin ? gstin.slice(0, 2) : '24',
+          pincode: '',
+          gstin,
+          pan: gstin ? gstin.slice(2, 12) : '',
+          creditDays: 30,
+          openingBalance: 0
+        });
+        newPartiesCount++;
+      }
+    }
+
+    // 2. Parse Stock Items
+    const itemRegex = /<STOCKITEM\s+NAME="([^"]+)"[^>]*>([\s\S]*?)<\/STOCKITEM>/gi;
+    let iMatch;
+    while ((iMatch = itemRegex.exec(xml)) !== null) {
+      const name = iMatch[1].replace(/&amp;/g, '&').trim();
+      const content = iMatch[2];
+
+      const hsnMatch = content.match(/<HSNCODE>([^<]+)<\/HSNCODE>/i) || content.match(/<HSNDETAILS>([^<]+)<\/HSNDETAILS>/i);
+      const hsn = hsnMatch ? hsnMatch[1].trim() : '39235010';
+
+      const unitMatch = content.match(/<BASEUNITS>([^<]+)<\/BASEUNITS>/i);
+      const unit = unitMatch ? unitMatch[1].trim() : 'PCS';
+
+      const existingIdx = currentItems.findIndex((it) => it.name.toLowerCase() === name.toLowerCase());
+      if (existingIdx >= 0) {
+        currentItems[existingIdx] = {
+          ...currentItems[existingIdx],
+          hsn: hsn || currentItems[existingIdx].hsn,
+          unit: unit || currentItems[existingIdx].unit
+        };
+      } else {
+        currentItems.push({
+          id: `ITEM-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          name,
+          description: name,
+          hsn,
+          unit,
+          baseRate: 0.30,
+          gstRate: 18,
+          stockQty: 10000,
+          category: 'Plastics'
+        });
+        newItemsCount++;
+      }
+    }
+
+    await writeJson(PARTIES_FILE, currentParties);
+    await writeJson(ITEMS_FILE, currentItems);
+
+    res.json({
+      success: true,
+      message: `Tally Masters imported successfully! (${newPartiesCount} new customers, ${newItemsCount} new items)`,
+      partiesCount: currentParties.length,
+      itemsCount: currentItems.length
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Fetch Live Masters from Tally on local Port 9000
+router.post('/masters/fetch-from-tally', async (req, res) => {
+  try {
+    const settings = await readJson(SETTINGS_FILE, {});
+    const host = settings.tally?.host || 'localhost';
+    const port = settings.tally?.port || 9000;
+
+    const requestXml = `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Collection</TYPE>
+    <ID>Ledger</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+      </STATICVARIABLES>
+    </DESC>
+  </BODY>
+</ENVELOPE>`;
+
+    const response = await fetch(`http://${host}:${port}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+      body: requestXml,
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Tally Prime on ${host}:${port} is offline or not responding.`);
+    }
+
+    const xml = await response.text();
+    // Use import parser
+    const currentParties = await readJson(PARTIES_FILE, []);
+    let count = 0;
+
+    const ledgerRegex = /<LEDGER\s+NAME="([^"]+)"[^>]*>([\s\S]*?)<\/LEDGER>/gi;
+    let lMatch;
+    while ((lMatch = ledgerRegex.exec(xml)) !== null) {
+      const name = lMatch[1].replace(/&amp;/g, '&').trim();
+      const content = lMatch[2];
+      const gstinMatch = content.match(/<PARTYGSTIN>([^<]+)<\/PARTYGSTIN>/i);
+      const gstin = gstinMatch ? gstinMatch[1].trim() : '';
+
+      const exists = currentParties.some((p) => p.name.toLowerCase() === name.toLowerCase());
+      if (!exists && name !== 'Cash' && name !== 'Profit & Loss A/c') {
+        currentParties.push({
+          id: `PART-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          name,
+          contactPerson: '',
+          phone: '',
+          email: '',
+          address: '',
+          city: '',
+          state: 'Gujarat',
+          stateCode: '24',
+          pincode: '',
+          gstin,
+          pan: gstin ? gstin.slice(2, 12) : '',
+          creditDays: 30,
+          openingBalance: 0
+        });
+        count++;
+      }
+    }
+
+    await writeJson(PARTIES_FILE, currentParties);
+    res.json({
+      success: true,
+      message: `Fetched ${count} ledgers directly from Tally Prime!`,
+      totalParties: currentParties.length
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export default router;

@@ -136,5 +136,62 @@ export const api = {
 
   getTallyExportXmlUrl: (all = false) => {
     return `${API_BASE}/tally/export-xml?all=${all}`;
+  },
+
+  // Authentication
+  login: async (credentials) => {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(credentials)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Login failed');
+    }
+    return data;
+  },
+
+  getProfile: async () => {
+    const res = await fetch(`${API_BASE}/auth/profile`);
+    return res.json();
+  },
+
+  changePassword: async (passwords) => {
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(passwords)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to update password');
+    }
+    return data;
+  },
+
+  // Masters Sync
+  importTallyMastersXml: async (xml) => {
+    const res = await fetch(`${API_BASE}/masters/import-tally-xml`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ xml })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to import Tally masters');
+    }
+    return data;
+  },
+
+  fetchMastersFromTally: async () => {
+    const res = await fetch(`${API_BASE}/masters/fetch-from-tally`, {
+      method: 'POST'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || 'Failed to fetch masters from Tally');
+    }
+    return data;
   }
 };
