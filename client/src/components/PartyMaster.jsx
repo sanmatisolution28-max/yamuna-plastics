@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
 import { api } from '../utils/api';
-import { formatINR } from '../utils/numberToWords';
 
-export default function PartyMaster({ parties, onPartyAdded, onRefresh }) {
+export default function PartyMaster({ parties = [], onPartyAdded, onRefresh, onSelectForBill }) {
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [xmlContent, setXmlContent] = useState('');
-  const [importing, setImporting] = useState(false);
+  const [selectedParty, setSelectedParty] = useState(null);
   const [fetchingTally, setFetchingTally] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
 
@@ -31,8 +28,10 @@ export default function PartyMaster({ parties, onPartyAdded, onRefresh }) {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
     return (
-      p.name.toLowerCase().includes(q) ||
+      (p.name && p.name.toLowerCase().includes(q)) ||
       (p.city && p.city.toLowerCase().includes(q)) ||
+      (p.state && p.state.toLowerCase().includes(q)) ||
+      (p.address && p.address.toLowerCase().includes(q)) ||
       (p.gstin && p.gstin.toLowerCase().includes(q))
     );
   });
@@ -78,243 +77,289 @@ export default function PartyMaster({ parties, onPartyAdded, onRefresh }) {
     try {
       const res = await api.fetchMastersFromTally();
       if (res.success) {
-        setStatusNotice({ type: 'success', text: `⚡ ${res.message}` });
+        setStatusNotice({ type: 'success', text: `⚡ ${res.message} (${res.totalParties} customers ready)` });
         if (onRefresh) onRefresh();
       } else {
-        setStatusNotice({ type: 'warning', text: `⚠️ ${res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.'}` });
+        const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+        setStatusNotice({
+          type: 'warning',
+          text: isCloud
+            ? '💡 Cloud Tip: Run "Sync_Tally_to_Cloud.bat" on your PC to push customers from Tally Prime to this live portal.'
+            : (res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.')
+        });
       }
     } catch (err) {
+      const isCloud = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       setStatusNotice({
         type: 'warning',
-        text: `⚠️ Tally Prime not reachable on Port 9000. Tip: Use "📥 Import Tally XML" or export Masters XML from Tally.`
+        text: isCloud
+          ? '💡 Cloud Tip: Run "Sync_Tally_to_Cloud.bat" on your PC to push customers from Tally Prime to this live portal.'
+          : '⚠️ Tally Prime Port 9000 is on standby. All saved customers remain available.'
       });
     } finally {
       setFetchingTally(false);
     }
   };
 
-  // Handle file upload for XML
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setXmlContent(event.target.result || '');
-    };
-    reader.readAsText(file);
-  };
-
-  // Import Tally XML
-  const handleImportXml = async (e) => {
-    e.preventDefault();
-    if (!xmlContent.trim()) {
-      setErrorMsg('Please paste Tally XML content or choose a .xml file.');
-      return;
-    }
-    setImporting(true);
-    setErrorMsg('');
-    try {
-      const res = await api.importTallyMastersXml(xmlContent);
-      if (res.success) {
-        setStatusNotice({ type: 'success', text: `✅ ${res.message}` });
-        setShowImportModal(false);
-        setXmlContent('');
-        if (onRefresh) onRefresh();
-      } else {
-        setErrorMsg(res.error || 'Failed to import Tally XML.');
-      }
-    } catch (err) {
-      setErrorMsg(err.message || 'Import failed.');
-    } finally {
-      setImporting(false);
-    }
-  };
-
   return (
-    <div className="party-master-container">
-      {/* Informative Header Banner */}
-      <div
-        style={{
-          background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
-          border: '1px solid #bae6fd',
-          borderRadius: '12px',
-          padding: '14px 18px',
-          marginBottom: '16px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        <div>
-          <div style={{ fontWeight: 800, fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span>🏢 Customer &amp; Party Master</span>
-            <span className="badge" style={{ background: '#3b82f6', color: '#fff', fontSize: '11px' }}>
-              {parties.length} Parties in System
-            </span>
-          </div>
-          <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>
-            All customers listed here automatically appear in the <strong>"Select Existing Customer"</strong> dropdown when creating bills.
-          </div>
+    <div className="party-directory-wrapper">
+      {/* 1. Header Bar */}
+      <div className="directory-header-bar">
+        <div className="header-left">
+          <h2>Customers Directory (Sundry Debtors)</h2>
+          <p className="header-sub">
+            All customers synced from Tally Prime. These automatically populate the <strong>"Bill To"</strong> &amp; <strong>"Ship To"</strong> dropdowns when making bills.
+          </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div className="header-actions">
           <button
             type="button"
-            className="btn-nav-secondary"
-            style={{ fontSize: '12px', padding: '7px 12px' }}
+            className="btn-sync-tally-pill"
             onClick={handleFetchFromTally}
             disabled={fetchingTally}
-            title="Fetch all Sundry Debtors directly from open Tally Prime via Port 9000"
           >
-            {fetchingTally ? '⏳ Fetching...' : '⚡ Fetch from Tally'}
+            {fetchingTally ? '⏳ Fetching Tally...' : '⚡ Sync from Tally'}
           </button>
 
           <button
             type="button"
-            className="btn-nav-secondary"
-            style={{ fontSize: '12px', padding: '7px 12px' }}
-            onClick={() => {
-              setErrorMsg('');
-              setShowImportModal(true);
-            }}
-            title="Import Ledgers from exported Tally XML file"
-          >
-            📥 Import Tally XML
-          </button>
-
-          <button
-            type="button"
-            className="btn-nav-primary"
-            style={{ fontSize: '12px', padding: '7px 14px' }}
+            className="btn-add-customer-pill"
             onClick={() => {
               setErrorMsg('');
               setShowAddModal(true);
             }}
           >
-            + Add Customer
+            + New Customer
           </button>
         </div>
       </div>
 
       {/* Status Notice */}
       {statusNotice && (
-        <div
-          style={{
-            background: statusNotice.type === 'success' ? '#dcfce7' : '#fef3c7',
-            border: `1.5px solid ${statusNotice.type === 'success' ? '#86efac' : '#fde68a'}`,
-            color: statusNotice.type === 'success' ? '#15803d' : '#92400e',
-            padding: '10px 14px',
-            borderRadius: '10px',
-            marginBottom: '14px',
-            fontSize: '12.5px',
-            fontWeight: 600
-          }}
-        >
+        <div className={`workbench-alert ${statusNotice.type}`} style={{ marginBottom: '14px' }}>
           {statusNotice.text}
         </div>
       )}
 
-      {/* Search Bar */}
-      <div className="form-card" style={{ padding: '12px', marginBottom: '14px' }}>
-        <input
-          type="text"
-          className="form-input"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="🔍 Search customers by name, city, GSTIN..."
-        />
+      {/* 2. Search & Stats Bar */}
+      <div className="directory-filter-bar">
+        <div className="search-input-wrap">
+          <span className="search-icon">🔍</span>
+          <input
+            type="text"
+            className="directory-search-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by customer name, GSTIN, city, state, or address..."
+          />
+          {search && (
+            <button type="button" className="clear-btn" onClick={() => setSearch('')}>
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="directory-count-badge">
+          <span>{filtered.length} of {parties.length} Customers</span>
+        </div>
       </div>
 
-      {/* Parties List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        {filtered.map((p) => (
-          <div key={p.id} className="invoice-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{p.name}</div>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>
-                  {p.contactPerson} {p.phone ? `· ${p.phone}` : ''}
+      {/* 3. Clean Customer Table */}
+      <div className="directory-table-card">
+        <div className="table-responsive-wrapper">
+          <table className="directory-data-table">
+            <thead>
+              <tr>
+                <th style={{ width: '38px', textAlign: 'center' }}>#</th>
+                <th style={{ minWidth: '220px' }}>Customer / Firm Name</th>
+                <th style={{ width: '150px' }}>GSTIN</th>
+                <th style={{ width: '130px' }}>State / Code</th>
+                <th style={{ minWidth: '220px' }}>Registered Address</th>
+                <th style={{ width: '130px' }}>Phone / Mobile</th>
+                <th style={{ width: '110px', textAlign: 'center' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((p, idx) => (
+                <tr key={p.id || idx} className="customer-row">
+                  <td style={{ textAlign: 'center', color: '#94a3b8', fontWeight: 700 }}>
+                    {idx + 1}
+                  </td>
+                  <td>
+                    <div className="cust-name-cell">
+                      <strong className="cust-primary-name">{p.name}</strong>
+                      <span className="cust-source-tag">Tally Prime</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span className={`gstin-badge ${p.gstin ? 'active' : 'unregistered'}`}>
+                      {p.gstin || 'Unregistered'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="state-badge">
+                      {p.state || 'Gujarat'} ({p.stateCode || (p.gstin ? p.gstin.slice(0, 2) : '24')})
+                    </span>
+                  </td>
+                  <td className="cust-address-cell">
+                    {p.address || p.city || 'GIDC Industrial Area'}
+                  </td>
+                  <td>
+                    <span className="cust-phone-cell">{p.phone || '-'}</span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button
+                      type="button"
+                      className="btn-view-cust-details"
+                      onClick={() => setSelectedParty(p)}
+                      title="View all details for this customer"
+                    >
+                      👁️ Details
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {filtered.length === 0 && (
+            <div className="directory-empty-state">
+              <span className="empty-icon">👥</span>
+              <h4>No customers found matching "{search}"</h4>
+              <p>Try clearing your search or click "⚡ Sync from Tally" to fetch customers from Tally Prime.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 4. Customer Details Drawer / Modal */}
+      {selectedParty && (
+        <div className="modal-overlay" onClick={() => setSelectedParty(null)}>
+          <div className="modal-dialog cust-details-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <span className="modal-title-icon">🏢</span>
+                <div>
+                  <div className="modal-title">{selectedParty.name}</div>
+                  <div className="modal-subtitle">Customer / Sundry Debtor Profile</div>
                 </div>
               </div>
-              <span className="badge" style={{ background: '#f1f5f9', color: '#334155' }}>
-                {p.state} ({p.stateCode || '24'})
-              </span>
+              <button className="btn-close-modal-icon" onClick={() => setSelectedParty(null)}>
+                ✕
+              </button>
             </div>
 
-            <div style={{ fontSize: '11.5px', color: '#475569', margin: '6px 0' }}>
-              📍 {p.address || p.city || 'Gujarat'}
+            <div className="modal-body" style={{ padding: '20px' }}>
+              <div className="cust-profile-grid">
+                <div className="profile-item">
+                  <span className="item-label">Customer Legal Name:</span>
+                  <strong className="item-val primary">{selectedParty.name}</strong>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">GSTIN / UIN:</span>
+                  <span className="item-val mono">{selectedParty.gstin || 'Unregistered'}</span>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">State Name:</span>
+                  <span className="item-val">{selectedParty.state || 'Gujarat'}</span>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">GST State Code:</span>
+                  <span className="item-val">{selectedParty.stateCode || (selectedParty.gstin ? selectedParty.gstin.slice(0, 2) : '24')}</span>
+                </div>
+
+                <div className="profile-item full-span">
+                  <span className="item-label">Billing / Registered Address:</span>
+                  <span className="item-val">{selectedParty.address || 'GIDC Industrial Area'}</span>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">Contact Person:</span>
+                  <span className="item-val">{selectedParty.contactPerson || '-'}</span>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">Phone / Mobile:</span>
+                  <span className="item-val">{selectedParty.phone || '-'}</span>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">Payment Terms:</span>
+                  <span className="item-val">{selectedParty.creditDays ? `Credit ${selectedParty.creditDays} Days` : 'Credit 30 Days'}</span>
+                </div>
+
+                <div className="profile-item">
+                  <span className="item-label">Data Source:</span>
+                  <span className="item-val">Tally Prime Port 9000 (Sundry Debtors)</span>
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px solid #f1f5f9', fontSize: '11px' }}>
-              <span><strong>GSTIN:</strong> {p.gstin || 'Unregistered'}</span>
-              <span><strong>Terms:</strong> Net {p.creditDays || 30} Days</span>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn-sm-action"
+                onClick={() => setSelectedParty(null)}
+              >
+                Close
+              </button>
+
+              {onSelectForBill && (
+                <button
+                  type="button"
+                  className="btn-nav-primary"
+                  style={{ padding: '7px 16px', fontSize: '12px' }}
+                  onClick={() => {
+                    onSelectForBill(selectedParty.id);
+                    setSelectedParty(null);
+                  }}
+                >
+                  📝 Create Bill for this Customer
+                </button>
+              )}
             </div>
           </div>
-        ))}
+        </div>
+      )}
 
-        {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '13px' }}>
-            No customers found matching "{search}". Click <strong>+ Add Customer</strong> or <strong>📥 Import Tally XML</strong> to add them.
-          </div>
-        )}
-      </div>
-
-      {/* Add Customer Modal */}
+      {/* 5. Add Customer Modal */}
       {showAddModal && (
         <div className="modal-overlay" onClick={() => setShowAddModal(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <div className="modal-title">+ Add New Customer</div>
-              <button className="btn-sm-action" onClick={() => setShowAddModal(false)}>✕</button>
+              <button className="btn-close-modal-icon" onClick={() => setShowAddModal(false)}>✕</button>
             </div>
             <form onSubmit={handleSaveParty}>
-              <div className="modal-body">
+              <div className="modal-body" style={{ padding: '18px' }}>
                 {errorMsg && (
-                  <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
+                  <div className="workbench-alert error" style={{ marginBottom: '12px' }}>
                     {errorMsg}
                   </div>
                 )}
-                <div className="form-group">
-                  <label className="form-label">Customer / Business Name <span className="required">*</span></label>
+
+                <div className="compact-form-row" style={{ marginBottom: '10px' }}>
+                  <label>Customer / Business Name *</label>
                   <input
                     type="text"
-                    required
-                    className="form-input"
+                    className="clean-input"
                     value={newParty.name}
                     onChange={(e) => setNewParty({ ...newParty, name: e.target.value })}
                     placeholder="e.g. Maruti Granules Pvt. Ltd."
+                    required
                   />
                 </div>
-                <div className="form-row">
-                  <div className="form-col form-group">
-                    <label className="form-label">Contact Person</label>
+
+                <div className="compact-form-grid-2" style={{ marginBottom: '10px' }}>
+                  <div>
+                    <label>GSTIN Number</label>
                     <input
                       type="text"
-                      className="form-input"
-                      value={newParty.contactPerson}
-                      onChange={(e) => setNewParty({ ...newParty, contactPerson: e.target.value })}
-                      placeholder="Mr. Pravin"
-                    />
-                  </div>
-                  <div className="form-col form-group">
-                    <label className="form-label">Phone</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={newParty.phone}
-                      onChange={(e) => setNewParty({ ...newParty, phone: e.target.value })}
-                      placeholder="+91 9825..."
-                    />
-                  </div>
-                </div>
-                <div className="form-row">
-                  <div className="form-col form-group">
-                    <label className="form-label">GSTIN</label>
-                    <input
-                      type="text"
-                      className="form-input"
+                      className="clean-input"
                       value={newParty.gstin}
                       onChange={(e) => {
                         const val = e.target.value.toUpperCase();
@@ -324,103 +369,70 @@ export default function PartyMaster({ parties, onPartyAdded, onRefresh }) {
                           stateCode: val.length >= 2 ? val.slice(0, 2) : newParty.stateCode
                         });
                       }}
-                      placeholder="24AAFCY..."
+                      placeholder="24AAFCY1234F1Z5"
                       maxLength={15}
                     />
                   </div>
-                  <div className="form-col form-group">
-                    <label className="form-label">State</label>
+                  <div>
+                    <label>State Name</label>
                     <input
                       type="text"
-                      className="form-input"
+                      className="clean-input"
                       value={newParty.state}
                       onChange={(e) => setNewParty({ ...newParty, state: e.target.value })}
-                      placeholder="Gujarat"
                     />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Address</label>
-                  <input
-                    type="text"
-                    className="form-input"
+
+                <div className="compact-form-row" style={{ marginBottom: '10px' }}>
+                  <label>Registered Office Address</label>
+                  <textarea
+                    className="clean-textarea"
+                    rows={2}
                     value={newParty.address}
                     onChange={(e) => setNewParty({ ...newParty, address: e.target.value })}
-                    placeholder="Plot / GIDC Estate, City"
+                    placeholder="Plot / Shed No, GIDC Estate, City"
                   />
                 </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn-sm-action" onClick={() => setShowAddModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary-action" style={{ width: 'auto', padding: '8px 16px' }} disabled={saving}>
-                  {saving ? 'Saving...' : 'Save Customer'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* Import Tally XML Modal */}
-      {showImportModal && (
-        <div className="modal-overlay" onClick={() => setShowImportModal(false)}>
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '540px' }}>
-            <div className="modal-header">
-              <div className="modal-title">📥 Import Masters from Tally Prime XML</div>
-              <button className="btn-sm-action" onClick={() => setShowImportModal(false)}>✕</button>
-            </div>
-            <form onSubmit={handleImportXml}>
-              <div className="modal-body">
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#475569', marginBottom: '14px', lineHeight: 1.5 }}>
-                  <strong>How to export from Tally Prime:</strong><br />
-                  1. In Tally Prime, press <strong>Alt + E</strong> (Export) &gt; <strong>Masters</strong>.<br />
-                  2. Select <strong>Ledgers</strong> or <strong>All Masters</strong>.<br />
-                  3. Set File Format to <strong>XML (Data Interchange)</strong> and Export.<br />
-                  4. Choose the exported XML file below or copy-paste its content.
-                </div>
-
-                {errorMsg && (
-                  <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                    {errorMsg}
+                <div className="compact-form-grid-2">
+                  <div>
+                    <label>Phone / Mobile</label>
+                    <input
+                      type="text"
+                      className="clean-input"
+                      value={newParty.phone}
+                      onChange={(e) => setNewParty({ ...newParty, phone: e.target.value })}
+                      placeholder="+91 98250..."
+                    />
                   </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label">Upload XML File</label>
-                  <input
-                    type="file"
-                    accept=".xml"
-                    onChange={handleFileUpload}
-                    className="form-input"
-                    style={{ padding: '6px' }}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Or Paste Tally XML Content Directly</label>
-                  <textarea
-                    rows={6}
-                    className="form-input"
-                    style={{ fontFamily: 'monospace', fontSize: '11px' }}
-                    value={xmlContent}
-                    onChange={(e) => setXmlContent(e.target.value)}
-                    placeholder="<ENVELOPE>&#10;  <BODY>&#10;    <DATA>&#10;      <TALLYMESSAGE>&#10;        <LEDGER NAME=&quot;MARUTI GRANULES&quot;>..."
-                  ></textarea>
+                  <div>
+                    <label>Credit Terms (Days)</label>
+                    <input
+                      type="number"
+                      className="clean-input"
+                      value={newParty.creditDays}
+                      onChange={(e) => setNewParty({ ...newParty, creditDays: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
               </div>
+
               <div className="modal-footer">
-                <button type="button" className="btn-sm-action" onClick={() => setShowImportModal(false)}>
+                <button
+                  type="button"
+                  className="btn-sm-action"
+                  onClick={() => setShowAddModal(false)}
+                >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary-action"
-                  style={{ width: 'auto', padding: '8px 18px' }}
-                  disabled={importing || !xmlContent.trim()}
+                  className="btn-nav-primary"
+                  disabled={saving}
+                  style={{ padding: '7px 16px', fontSize: '12px' }}
                 >
-                  {importing ? '⏳ Importing...' : '📥 Import to Portal'}
+                  {saving ? 'Saving...' : '💾 Save Customer'}
                 </button>
               </div>
             </form>

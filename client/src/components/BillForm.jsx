@@ -9,13 +9,14 @@ export default function BillForm({
   items = [],
   settings,
   editingInvoice,
+  preselectedPartyId,
   onCancelEdit,
   onRefresh
 }) {
   const isEditing = Boolean(editingInvoice && editingInvoice.id);
 
   // 1. Bill To (Buyer) Details
-  const [selectedPartyId, setSelectedPartyId] = useState('');
+  const [selectedPartyId, setSelectedPartyId] = useState(preselectedPartyId || '');
   const [partySearch, setPartySearch] = useState('');
   const [showCustomParty, setShowCustomParty] = useState(false);
   const [partyDetails, setPartyDetails] = useState({
@@ -77,7 +78,7 @@ export default function BillForm({
   const [successNotice, setSuccessNotice] = useState(null);
   const [tallyNotice, setTallyNotice] = useState(null);
 
-  // Filtered Debtors list for fast search
+  // Filtered Debtors list for search
   const filteredParties = parties.filter((p) => {
     if (!partySearch.trim()) return true;
     const q = partySearch.toLowerCase();
@@ -89,7 +90,7 @@ export default function BillForm({
     );
   });
 
-  // Fetch live masters from Tally directly from the Bill creation screen
+  // Fetch live masters from Tally directly
   const handleSyncFromTally = async () => {
     setSyncingTally(true);
     setTallyNotice(null);
@@ -98,7 +99,7 @@ export default function BillForm({
       if (res.success) {
         setTallyNotice({
           type: 'success',
-          text: `✅ ${res.message} (${res.totalParties} Customers & ${res.totalItems} Products ready)`
+          text: `✅ ${res.message} (${res.totalParties} Customers ready)`
         });
         if (onRefresh) await onRefresh();
       } else {
@@ -106,7 +107,7 @@ export default function BillForm({
         setTallyNotice({
           type: 'warning',
           text: isCloud
-            ? '💡 Cloud Note: To push Tally from your PC to this live portal, double-click "Sync_Tally_to_Cloud.bat" or open http://localhost:5005 on your PC.'
+            ? '💡 Cloud Note: To push Tally data to this live portal, double-click "Sync_Tally_to_Cloud.bat" on your PC.'
             : (res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.')
         });
       }
@@ -115,7 +116,7 @@ export default function BillForm({
       setTallyNotice({
         type: 'warning',
         text: isCloud
-          ? '💡 Cloud Note: To push Tally from your PC to this live portal, double-click "Sync_Tally_to_Cloud.bat" or open http://localhost:5005 on your PC.'
+          ? '💡 Cloud Note: To push Tally data to this live portal, double-click "Sync_Tally_to_Cloud.bat" on your PC.'
           : 'Tally Prime on Port 9000 is on standby. All saved masters remain ready.'
       });
     } finally {
@@ -144,7 +145,6 @@ export default function BillForm({
       };
       setPartyDetails(newBillTo);
 
-      // If Ship To is set to same as Bill To, sync it automatically
       if (sameAsBillTo) {
         setShipToDetails({
           name: newBillTo.name,
@@ -194,7 +194,6 @@ export default function BillForm({
           phone: editingInvoice.shipTo.phone || ''
         });
 
-        // Determine if same as Bill To
         const isDifferent =
           (editingInvoice.shipTo.address && editingInvoice.shipTo.address !== editingInvoice.address) ||
           (editingInvoice.shipTo.name && editingInvoice.shipTo.name !== editingInvoice.partyName);
@@ -240,12 +239,12 @@ export default function BillForm({
           }))
         );
       }
-    } else {
-      if (parties.length > 0 && !selectedPartyId) {
-        handlePartyChange(parties[0].id);
-      }
+    } else if (preselectedPartyId) {
+      handlePartyChange(preselectedPartyId);
+    } else if (parties.length > 0 && !selectedPartyId) {
+      handlePartyChange(parties[0].id);
     }
-  }, [editingInvoice, parties]);
+  }, [editingInvoice, preselectedPartyId, parties]);
 
   // Is interstate supply? Gujarat state code is "24"
   const isInterstate = String(partyDetails.stateCode).trim() !== '24';
@@ -449,8 +448,8 @@ export default function BillForm({
       {/* 1. Header Toolbar Strip */}
       <div className="workbench-top-bar">
         <div className="bar-left">
-          <h2>{isEditing ? `Edit Invoice #${editingInvoice.invoiceNo}` : 'Create Tax Invoice'}</h2>
-          <span className="billing-tenant-chip">🏢 Yamuna Plastics · Sales Voucher</span>
+          <h2>{isEditing ? `Edit Invoice #${editingInvoice.invoiceNo}` : 'New Sales Invoice'}</h2>
+          <span className="billing-tenant-chip">Yamuna Plastics · Sales Voucher</span>
         </div>
 
         <div className="bar-right">
@@ -459,7 +458,7 @@ export default function BillForm({
             className="btn-sync-tally-pill"
             onClick={handleSyncFromTally}
             disabled={syncingTally}
-            title="Pulls Sundry Debtors and Stock Items from active Tally Prime"
+            title="Pulls Sundry Debtors from active Tally Prime"
           >
             {syncingTally ? '⏳ Fetching Tally...' : '⚡ Fetch from Tally'}
           </button>
@@ -529,14 +528,14 @@ export default function BillForm({
         </div>
 
         <div className="meta-field-group">
-          <label>Tax Treatment</label>
+          <label>GST Treatment</label>
           <div className="tax-treatment-badge">
-            {isInterstate ? '🌐 Inter-State (IGST 18%)' : '📍 Intra-State (CGST 9% + SGST 9%)'}
+            {isInterstate ? '🌐 Interstate (IGST 18%)' : '📍 Gujarat Intra-State (CGST 9% + SGST 9%)'}
           </div>
         </div>
       </div>
 
-      {/* 3. TWO-COLUMN PARTY SECTION: BILL TO vs SHIP TO */}
+      {/* 3. CLEAN TWO-COLUMN PARTY SECTION: BILL TO vs SHIP TO */}
       <div className="billing-party-two-column-grid">
         {/* LEFT COLUMN: BILL TO (BUYER) */}
         <div className="party-panel-box bill-to-panel">
@@ -545,7 +544,7 @@ export default function BillForm({
               <span className="panel-icon">🏢</span>
               <div>
                 <h3 className="panel-title">BILL TO (BUYER)</h3>
-                <span className="panel-subtitle">Invoiced Party / Accounts Payable</span>
+                <span className="panel-subtitle">Invoiced Customer / Party Details</span>
               </div>
             </div>
             <button
@@ -553,34 +552,19 @@ export default function BillForm({
               className="btn-toggle-custom-party"
               onClick={() => setShowCustomParty(!showCustomParty)}
             >
-              {showCustomParty ? '← Tally Masters' : '+ Custom Buyer'}
+              {showCustomParty ? '← Tally List' : '+ Custom Buyer'}
             </button>
           </div>
 
           {!showCustomParty ? (
             <div className="party-select-container">
-              <div className="tally-party-header-row">
-                <label className="field-micro-label">
-                  Select Customer from Tally ({parties.length} available)
-                </label>
-                <button
-                  type="button"
-                  className="btn-sync-inline-party"
-                  onClick={handleSyncFromTally}
-                  disabled={syncingTally}
-                  title="Pulls latest customers from Tally Prime"
-                >
-                  {syncingTally ? '⏳...' : '⚡ Sync Tally'}
-                </button>
-              </div>
-
-              {parties.length > 2 && (
+              {parties.length > 3 && (
                 <div className="customer-search-box">
                   <span className="search-icon">🔍</span>
                   <input
                     type="text"
                     className="customer-filter-input"
-                    placeholder="Search by name, GSTIN, city..."
+                    placeholder="Search customer by name, GSTIN, city..."
                     value={partySearch}
                     onChange={(e) => setPartySearch(e.target.value)}
                   />
@@ -601,7 +585,7 @@ export default function BillForm({
                 value={selectedPartyId}
                 onChange={(e) => handlePartyChange(e.target.value)}
               >
-                <option value="">-- Choose Customer from Tally Masters --</option>
+                <option value="">-- Select Customer from Tally ({parties.length}) --</option>
                 {filteredParties.map((p) => (
                   <option key={p.id} value={p.id}>
                     {p.name} {p.gstin ? `[GSTIN: ${p.gstin}]` : ''} - {p.state || 'Gujarat'}
@@ -685,7 +669,7 @@ export default function BillForm({
                   />
                 </div>
                 <div>
-                  <label>State &amp; Code</label>
+                  <label>State Name</label>
                   <input
                     type="text"
                     className="clean-input"
@@ -741,92 +725,86 @@ export default function BillForm({
           )}
         </div>
 
-        {/* RIGHT COLUMN: SHIP TO (CONSIGNEE / DELIVERY) */}
+        {/* RIGHT COLUMN: SHIP TO (CONSIGNEE) */}
         <div className={`party-panel-box ship-to-panel ${sameAsBillTo ? 'is-same-party' : 'is-different-party'}`}>
           <div className="party-panel-header">
             <div className="panel-title-group">
               <span className="panel-icon">🚚</span>
               <div>
                 <h3 className="panel-title">SHIP TO (CONSIGNEE)</h3>
-                <span className="panel-subtitle">Delivery Address / Factory / Site</span>
+                <span className="panel-subtitle">Delivery / Factory Plant Address</span>
               </div>
             </div>
 
-            {/* Checkbox toggle: Same as Bill to */}
-            <label className="same-as-toggle-label">
-              <input
-                type="checkbox"
-                className="same-as-checkbox"
-                checked={sameAsBillTo}
-                onChange={(e) => {
-                  const checked = e.target.checked;
-                  setSameAsBillTo(checked);
-                  if (checked) {
-                    setShipToDetails({
-                      name: partyDetails.name,
-                      gstin: partyDetails.gstin,
-                      state: partyDetails.state,
-                      stateCode: partyDetails.stateCode,
-                      address: partyDetails.address,
-                      phone: partyDetails.phone
-                    });
-                  }
-                }}
-              />
-              <span className="toggle-text">Same as Bill To</span>
-            </label>
-          </div>
-
-          {sameAsBillTo ? (
-            /* When Ship To is same as Bill To */
-            <div className="ship-to-same-container">
-              <div className="same-address-badge">
-                <span className="badge-icon">✓</span>
-                <span>Delivery destination matches Buyer's Billing Address</span>
-              </div>
-
-              <div className="party-info-card readonly-preview">
-                <div className="party-name-row">
-                  <span className="party-firm-name">{partyDetails.name || 'Same as Buyer'}</span>
-                  <span className="consignee-sync-chip">Auto-Synced</span>
-                </div>
-                <div className="party-fields-compact">
-                  <div className="party-info-line">
-                    <span className="info-tag">Delivery Site:</span>
-                    <span className="info-val">{partyDetails.address || 'Same as registered buyer address'}</span>
-                  </div>
-                  <div className="party-info-line">
-                    <span className="info-tag">Destination State:</span>
-                    <span className="info-val">{partyDetails.state} (Code: {partyDetails.stateCode})</span>
-                  </div>
-                  <div className="party-info-line">
-                    <span className="info-tag">Consignee GSTIN:</span>
-                    <span className="info-val">{partyDetails.gstin || 'Same as Buyer'}</span>
-                  </div>
-                </div>
-              </div>
-
+            {/* Clear segmented toggle */}
+            <div className="shipto-segmented-switch">
               <button
                 type="button"
-                className="btn-specify-different-shipto"
+                className={`switch-segment ${sameAsBillTo ? 'active' : ''}`}
+                onClick={() => {
+                  setSameAsBillTo(true);
+                  setShipToDetails({
+                    name: partyDetails.name,
+                    gstin: partyDetails.gstin,
+                    state: partyDetails.state,
+                    stateCode: partyDetails.stateCode,
+                    address: partyDetails.address,
+                    phone: partyDetails.phone
+                  });
+                }}
+              >
+                Same as Bill To
+              </button>
+              <button
+                type="button"
+                className={`switch-segment ${!sameAsBillTo ? 'active different' : ''}`}
                 onClick={() => {
                   setSameAsBillTo(false);
                   handleCopyBillToToShipTo();
                 }}
               >
-                ✏️ Deliver to Different Factory / Site / Plant
+                Different Plant / Site
               </button>
             </div>
+          </div>
+
+          {sameAsBillTo ? (
+            /* Clean preview when Same as Bill To */
+            <div className="ship-to-same-container">
+              <div className="same-address-badge">
+                <span className="badge-icon">✓</span>
+                <div>
+                  <strong>Goods will be delivered to Buyer's registered address</strong>
+                  <div style={{ fontSize: '11px', marginTop: '2px', opacity: 0.85 }}>
+                    {partyDetails.address || 'Address matches Buyer particulars above'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="delivery-destination-note">
+                <span>Destination: <strong>{destination || partyDetails.address || 'Gujarat'}</strong></span>
+                <button
+                  type="button"
+                  className="btn-link-action"
+                  onClick={() => {
+                    setSameAsBillTo(false);
+                    handleCopyBillToToShipTo();
+                  }}
+                >
+                  Change to Different Plant Address
+                </button>
+              </div>
+            </div>
           ) : (
-            /* When Ship To is DIFFERENT from Bill To */
+            /* Custom Delivery Fields when Ship To is different */
             <div className="ship-to-custom-container">
               <div className="ship-to-action-row">
-                <span className="custom-shipto-notice">⚡ Different Delivery Location Active</span>
+                <span className="custom-shipto-notice">⚡ Different Consignee Address Active</span>
                 <button
                   type="button"
                   className="btn-copy-billto-sm"
                   onClick={handleCopyBillToToShipTo}
-                  title="Copy details from Bill To to edit easily"
+                  title="Copy details from Bill To"
                 >
                   📋 Copy from Bill To
                 </button>
@@ -838,7 +816,7 @@ export default function BillForm({
                   <input
                     type="text"
                     className="clean-input"
-                    placeholder="e.g. Maruti Granules (Unit-2 Plant) / Site Office"
+                    placeholder="e.g. Maruti Granules (Morbi Factory Plant)"
                     value={shipToDetails.name}
                     onChange={(e) => setShipToDetails({ ...shipToDetails, name: e.target.value })}
                     required
@@ -880,7 +858,7 @@ export default function BillForm({
                   <textarea
                     className="clean-textarea"
                     rows={2}
-                    placeholder="Plot / Shed No, GIDC Estate / Warehouse Address"
+                    placeholder="Plot / Shed No, GIDC Industrial Estate, City"
                     value={shipToDetails.address}
                     onChange={(e) => setShipToDetails({ ...shipToDetails, address: e.target.value })}
                     required
@@ -892,7 +870,7 @@ export default function BillForm({
                   <input
                     type="text"
                     className="clean-input"
-                    placeholder="Supervisor or receiver phone"
+                    placeholder="Supervisor or delivery receiver phone"
                     value={shipToDetails.phone}
                     onChange={(e) => setShipToDetails({ ...shipToDetails, phone: e.target.value })}
                   />
@@ -903,12 +881,12 @@ export default function BillForm({
         </div>
       </div>
 
-      {/* 4. Products Table (Tabular Data Grid - 1 Row Per Item) */}
+      {/* 4. Products Table */}
       <div className="products-table-card">
         <div className="card-section-header">
           <div className="header-title">
             <span className="section-icon">📦</span>
-            <h3>Bill Items ({lines.length} items)</h3>
+            <h3>Product Line Items ({lines.length} items)</h3>
           </div>
           <button type="button" className="btn-table-add-row" onClick={addLine}>
             + Add Item Row
@@ -935,10 +913,7 @@ export default function BillForm({
             <tbody>
               {computedLines.map((line, idx) => (
                 <tr key={line.id}>
-                  {/* Row Index */}
                   <td className="row-index">{idx + 1}</td>
-
-                  {/* Product Name */}
                   <td>
                     <input
                       type="text"
@@ -950,8 +925,6 @@ export default function BillForm({
                       required
                     />
                   </td>
-
-                  {/* HSN */}
                   <td>
                     <input
                       type="text"
@@ -961,8 +934,6 @@ export default function BillForm({
                       onChange={(e) => updateLine(idx, 'hsn', e.target.value)}
                     />
                   </td>
-
-                  {/* Qty */}
                   <td>
                     <input
                       type="number"
@@ -975,8 +946,6 @@ export default function BillForm({
                       required
                     />
                   </td>
-
-                  {/* Unit */}
                   <td>
                     <select
                       className="table-cell-select"
@@ -991,8 +960,6 @@ export default function BillForm({
                       <option value="NOS">NOS</option>
                     </select>
                   </td>
-
-                  {/* Rate */}
                   <td>
                     <input
                       type="number"
@@ -1005,8 +972,6 @@ export default function BillForm({
                       required
                     />
                   </td>
-
-                  {/* Discount % */}
                   <td>
                     <input
                       type="number"
@@ -1019,13 +984,9 @@ export default function BillForm({
                       onChange={(e) => updateLine(idx, 'discountPct', Number(e.target.value))}
                     />
                   </td>
-
-                  {/* Taxable Amount */}
                   <td className="table-cell-numeric">
                     {formatINR(line.taxable)}
                   </td>
-
-                  {/* GST Rate */}
                   <td>
                     <select
                       className="table-cell-select"
@@ -1039,13 +1000,9 @@ export default function BillForm({
                       <option value={28}>28%</option>
                     </select>
                   </td>
-
-                  {/* Row Total */}
                   <td className="table-cell-numeric bold highlight">
                     {formatINR(line.rowTotal)}
                   </td>
-
-                  {/* Delete Row */}
                   <td style={{ textAlign: 'center' }}>
                     {lines.length > 1 && (
                       <button
@@ -1227,7 +1184,7 @@ export default function BillForm({
             onClick={() => handleGenerateBill(true)}
             disabled={saving}
           >
-            {saving ? '⏳ Saving & Syncing...' : '⚡ Save & Push to Tally (1-Click)'}
+            {saving ? '⏳ Saving & Syncing...' : '⚡ Save & Push to Tally'}
           </button>
 
           <button

@@ -31,6 +31,7 @@ export default function App() {
   const [viewingInvoice, setViewingInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingInvoice, setEditingInvoice] = useState(null);
+  const [preselectedPartyId, setPreselectedPartyId] = useState('');
   const [refreshing, setRefreshing] = useState(false);
 
   // Load all initial data from server
@@ -324,6 +325,7 @@ export default function App() {
                 items={items}
                 settings={settings}
                 editingInvoice={editingInvoice}
+                preselectedPartyId={preselectedPartyId}
                 onCancelEdit={() => setEditingInvoice(null)}
                 onBillGenerated={handleBillGenerated}
                 onViewInvoice={(inv) => setViewingInvoice(inv)}
@@ -355,6 +357,11 @@ export default function App() {
                 parties={parties}
                 onPartyAdded={(p) => setParties((prev) => [...prev, p])}
                 onRefresh={loadData}
+                onSelectForBill={(partyId) => {
+                  setPreselectedPartyId(partyId);
+                  setEditingInvoice(null);
+                  setActiveTab('new-bill');
+                }}
               />
             )}
 
