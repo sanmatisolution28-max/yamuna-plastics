@@ -262,6 +262,16 @@ export default function App() {
 
           <button
             type="button"
+            className={`tab-button ${activeTab === 'items' ? 'active' : ''}`}
+            onClick={() => setActiveTab('items')}
+          >
+            <span className="tab-icon">📦</span>
+            <span className="tab-text">Products</span>
+            <span className="tab-badge">{items.length}</span>
+          </button>
+
+          <button
+            type="button"
             className={`tab-button ${activeTab === 'profile' ? 'active' : ''}`}
             onClick={() => setActiveTab('profile')}
           >
@@ -324,6 +334,14 @@ export default function App() {
                   setEditingInvoice(null);
                   setActiveTab('new-bill');
                 }}
+              />
+            )}
+
+            {activeTab === 'items' && (
+              <ItemCatalog
+                items={items}
+                onItemAdded={(it) => setItems((prev) => [...prev, it])}
+                onRefresh={loadData}
               />
             )}
 
