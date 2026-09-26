@@ -162,20 +162,20 @@ export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, 
                     <tr key={inv.id} className="customer-row">
                       <td>
                         <strong
-                          style={{ color: '#1e3a8a', cursor: 'pointer', fontSize: '13px' }}
+                          style={{ color: 'var(--primary-ink)', cursor: 'pointer', fontSize: '13px' }}
                           onClick={() => onViewInvoice(inv)}
                           title="Click to view Tax Invoice"
                         >
                           {inv.invoiceNo}
                         </strong>
                       </td>
-                      <td style={{ color: '#64748b', fontSize: '12px' }}>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>
                         {inv.date}
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{inv.partyName}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{inv.partyName}</div>
                         {inv.shipTo?.name && inv.shipTo.name !== inv.partyName && (
-                          <div style={{ fontSize: '10.5px', color: '#047857' }}>
+                          <div style={{ fontSize: '10.5px', color: 'var(--success-ink)' }}>
                             Ship To: {inv.shipTo.name}
                           </div>
                         )}
@@ -185,16 +185,16 @@ export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, 
                           {inv.gstin || 'Unregistered'}
                         </span>
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 800, color: '#0f172a', fontSize: '13.5px' }}>
+                      <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-main)', fontSize: '13.5px' }}>
                         {formatINR(inv.grandTotal)}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <span
                           className="state-badge"
                           style={{
-                            background: isSynced ? '#dcfce7' : '#fef3c7',
-                            color: isSynced ? '#15803d' : '#b45309',
-                            borderColor: isSynced ? '#86efac' : '#fde68a',
+                            background: isSynced ? 'var(--success-light)' : 'var(--warning-light)',
+                            color: isSynced ? 'var(--success-ink)' : 'var(--warning-ink)',
+                            borderColor: isSynced ? 'var(--success-border)' : 'var(--warning-border)',
                             fontWeight: 700,
                             fontSize: '11px'
                           }}
@@ -217,7 +217,7 @@ export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, 
                             type="button"
                             className="btn-view-cust-details"
                             onClick={() => onEditInvoice && onEditInvoice(inv)}
-                            style={{ background: '#f8fafc', color: '#334155', borderColor: '#cbd5e1' }}
+                            style={{ background: 'var(--bg-card)', color: 'var(--text-secondary)', borderColor: 'var(--border-medium)' }}
                             title="Edit this invoice"
                           >
                             ✏️ Edit
@@ -229,7 +229,7 @@ export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, 
                               className="btn-view-cust-details"
                               disabled={syncingId === inv.id}
                               onClick={() => handleSyncSingle(inv)}
-                              style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}
+                              style={{ background: 'var(--success-light)', color: 'var(--success-ink)', borderColor: 'var(--success-border)' }}
                               title="Push to Tally Prime Sales Day Book"
                             >
                               {syncingId === inv.id ? '...' : '⚡ Push'}

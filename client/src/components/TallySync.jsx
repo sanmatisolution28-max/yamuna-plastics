@@ -140,8 +140,8 @@ export default function TallySync({
           style={{
             padding: '14px',
             borderRadius: '12px',
-            background: tallyStatus?.online ? '#ecfdf5' : '#fffbeb',
-            border: `1.5px solid ${tallyStatus?.online ? '#a7f3d0' : '#fde68a'}`,
+            background: tallyStatus?.online ? 'var(--success-light)' : 'var(--warning-light)',
+            border: `1.5px solid ${tallyStatus?.online ? 'var(--success-border)' : 'var(--warning-border)'}`,
             marginBottom: '12px'
           }}
         >
@@ -150,15 +150,15 @@ export default function TallySync({
               className={`status-dot ${tallyStatus?.online ? '' : 'offline'}`}
               style={{ width: '10px', height: '10px' }}
             ></span>
-            <strong style={{ color: tallyStatus?.online ? '#065f46' : '#92400e', fontSize: '14px' }}>
+            <strong style={{ color: tallyStatus?.online ? 'var(--success-ink)' : 'var(--warning-ink)', fontSize: '14px' }}>
               {tallyStatus?.online ? 'Tally Prime is Connected (Port 9000)' : 'Tally Prime Port 9000 is on Standby'}
             </strong>
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.5 }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
             {tallyStatus?.message || 'Testing port 9000...'}
           </div>
           {tallyStatus?.configuredCompany && (
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '6px' }}>
               Company: <strong>{tallyStatus.activeCompany || tallyStatus.configuredCompany}</strong> | Port: <strong>{tallyStatus.port || 9000}</strong>
             </div>
           )}
@@ -166,13 +166,13 @@ export default function TallySync({
 
         {/* Counters */}
         <div style={{ display: 'flex', gap: '10px', margin: '14px 0' }}>
-          <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: '#047857' }}>{syncedInvoices.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Synced in Tally</div>
+          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--success-ink)' }}>{syncedInvoices.length}</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Synced in Tally</div>
           </div>
-          <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: '#d97706' }}>{pendingInvoices.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Pending Sync</div>
+          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
+            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--warning-ink)' }}>{pendingInvoices.length}</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Pending Sync</div>
           </div>
         </div>
 
@@ -206,8 +206,8 @@ export default function TallySync({
               padding: '12px',
               borderRadius: '10px',
               fontSize: '12.5px',
-              background: syncResult.success ? '#dcfce7' : '#fee2e2',
-              color: syncResult.success ? '#15803d' : '#b91c1c'
+              background: syncResult.success ? 'var(--success-light)' : 'var(--danger-light)',
+              color: syncResult.success ? 'var(--success-ink)' : 'var(--danger-ink)'
             }}
           >
             <div>{syncResult.message || syncResult.error}</div>
@@ -223,28 +223,28 @@ export default function TallySync({
       </div>
 
       {/* 2. Customer & Product Masters Sync Card */}
-      <div className="form-card" style={{ border: '2px solid #10b981' }}>
+      <div className="form-card" style={{ border: '2px solid var(--success-border)' }}>
         <div className="card-title-row">
           <div className="card-title">
-            <span style={{ color: '#047857' }}>👥 Customers &amp; 📦 Products Data Sync (Tally Prime Master Data)</span>
+            <span style={{ color: 'var(--success-ink)' }}>👥 Customers &amp; 📦 Products Data Sync (Tally Prime Master Data)</span>
           </div>
-          <span style={{ background: '#ecfdf5', color: '#047857', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
+          <span style={{ background: 'var(--success-light)', color: 'var(--success-ink)', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 800 }}>
             Tally Prime Source
           </span>
         </div>
 
-        <div style={{ fontSize: '12.5px', color: '#475569', marginBottom: '14px', lineHeight: 1.5 }}>
+        <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
           All customer parties (Sundry Debtors) and product catalog (Stock Items with HSN, GST rate, units &amp; rates) are synchronized directly with Tally Prime.
         </div>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '26px', fontWeight: 900, color: '#047857' }}>{parties.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Sundry Debtors (Customers)</div>
+          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
+            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--success-ink)' }}>{parties.length}</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Sundry Debtors (Customers)</div>
           </div>
-          <div style={{ flex: 1, background: '#f8fafc', padding: '14px', borderRadius: '10px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ fontSize: '26px', fontWeight: 900, color: '#2563eb' }}>⚡ Ready</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: '#64748b' }}>Stock Items (Products)</div>
+          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
+            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--primary-ink)' }}>⚡ Ready</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Stock Items (Products)</div>
           </div>
         </div>
 
@@ -252,7 +252,7 @@ export default function TallySync({
           <button
             type="button"
             className="btn-primary-action"
-            style={{ flex: 1, minWidth: '220px', background: '#059669' }}
+            style={{ flex: 1, minWidth: '220px', background: 'var(--fill-success-strong)' }}
             disabled={syncingMasters}
             onClick={handleFetchMasters}
           >
@@ -281,9 +281,9 @@ export default function TallySync({
               padding: '12px',
               borderRadius: '10px',
               fontSize: '12.5px',
-              background: mastersNotice.type === 'success' ? '#dcfce7' : '#fee2e2',
-              color: mastersNotice.type === 'success' ? '#15803d' : '#b91c1c',
-              border: `1px solid ${mastersNotice.type === 'success' ? '#86efac' : '#fca5a5'}`
+              background: mastersNotice.type === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+              color: mastersNotice.type === 'success' ? 'var(--success-ink)' : 'var(--danger-ink)',
+              border: `1px solid ${mastersNotice.type === 'success' ? 'var(--success-border)' : 'var(--danger-border)'}`
             }}
           >
             {mastersNotice.text}
@@ -292,14 +292,14 @@ export default function TallySync({
       </div>
 
       {/* 3. 1-Click Client PC Bridge Connector */}
-      <div className="form-card" style={{ background: '#f0fdf4', border: '1.5px solid #86efac' }}>
+      <div className="form-card" style={{ background: 'var(--success-light)', border: '1.5px solid var(--success-border)' }}>
         <div className="card-title-row">
           <div className="card-title">
-            <span style={{ color: '#166534' }}>🚀 1-Click Real-Time Tally Bridge (For Client PC)</span>
+            <span style={{ color: 'var(--success-ink)' }}>🚀 1-Click Real-Time Tally Bridge (For Client PC)</span>
           </div>
         </div>
 
-        <div style={{ fontSize: '12.5px', color: '#14532d', lineHeight: 1.6, marginBottom: '14px' }}>
+        <div style={{ fontSize: '12.5px', color: 'var(--success-ink)', lineHeight: 1.6, marginBottom: '14px' }}>
           To enable <strong>instant automatic sync</strong> on any client PC with Tally Prime open (Port 9000), download and run the 1-Click Bridge. It connects the local Tally Prime with the cloud portal in real time without any setup!
         </div>
 
@@ -308,7 +308,7 @@ export default function TallySync({
             href="/api/tally/download-bridge-bat"
             download="Yamuna-Tally-Bridge.bat"
             className="btn-primary-action"
-            style={{ textDecoration: 'none', background: '#16a34a', flex: 1, minWidth: '220px', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+            style={{ textDecoration: 'none', background: 'var(--fill-success-strong)', flex: 1, minWidth: '220px', textAlign: 'center', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
           >
             <span>⬇️ Download 1-Click Bridge (.bat)</span>
           </a>
@@ -325,14 +325,14 @@ export default function TallySync({
       </div>
 
       {/* 4. Simple Setup Guide */}
-      <div className="form-card" style={{ background: '#f8fafc' }}>
+      <div className="form-card" style={{ background: 'var(--bg-card)' }}>
         <div className="card-title-row">
           <div className="card-title">
             <span>📖 How to Connect Client Tally Prime (3 Easy Options)</span>
           </div>
         </div>
 
-        <div style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.8 }}>
+        <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.8 }}>
           <p style={{ margin: '0 0 8px' }}>
             <strong>Step 1: Enable Connectivity in Tally Prime:</strong><br />
             In Tally Prime, press <code>F1: Help</code> &gt; <code>Settings</code> &gt; <code>Connectivity</code> &gt; <code>Client/Server configuration</code>.<br />

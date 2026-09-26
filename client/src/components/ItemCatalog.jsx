@@ -106,8 +106,8 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
       {/* Informative Header Banner */}
       <div
         style={{
-          background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 100%)',
-          border: '1px solid #bae6fd',
+          background: 'linear-gradient(135deg, var(--success-light) 0%, var(--accent-cyan-light) 100%)',
+          border: '1px solid var(--success-border)',
           borderRadius: '12px',
           padding: '14px 18px',
           marginBottom: '16px',
@@ -119,13 +119,13 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
         }}
       >
         <div>
-          <div style={{ fontWeight: 800, fontSize: '14px', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ fontWeight: 800, fontSize: '14px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <span>📦 Products &amp; Stock Items Master</span>
             <span className="badge" style={{ background: '#0284c7', color: '#fff', fontSize: '11px' }}>
               {items.length} Items in Catalog
             </span>
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px' }}>
             All products listed here automatically populate the <strong>"Select Product"</strong> dropdown when adding line items to a bill.
           </div>
         </div>
@@ -162,9 +162,9 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
       {statusNotice && (
         <div
           style={{
-            background: statusNotice.type === 'success' ? '#dcfce7' : '#fef3c7',
-            border: `1.5px solid ${statusNotice.type === 'success' ? '#86efac' : '#fde68a'}`,
-            color: statusNotice.type === 'success' ? '#15803d' : '#92400e',
+            background: statusNotice.type === 'success' ? 'var(--success-light)' : 'var(--warning-light)',
+            border: `1.5px solid ${statusNotice.type === 'success' ? 'var(--success-border)' : 'var(--warning-border)'}`,
+            color: statusNotice.type === 'success' ? 'var(--success-ink)' : 'var(--warning-ink)',
             padding: '10px 14px',
             borderRadius: '10px',
             marginBottom: '14px',
@@ -193,29 +193,29 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
           <div key={it.id} className="invoice-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{it.name}</div>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>{it.description}</div>
-              </div>
-              <span className="badge" style={{ background: '#ecfdf5', color: '#047857', fontWeight: 800 }}>
-                {it.gstRate}% GST
-              </span>
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-main)' }}>{it.name}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>{it.description}</div>
+                </div>
+                <span className="badge" style={{ background: 'var(--success-light)', color: 'var(--success-ink)', fontWeight: 800 }}>
+                  {it.gstRate}% GST
+                </span>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0', flexWrap: 'wrap' }}>
-              <span className="badge" style={{ background: '#f1f5f9', color: '#334155' }}>
-                HSN: {it.hsn}
-              </span>
-              <span className="badge" style={{ background: '#e0f2fe', color: '#0369a1' }}>
-                Stock: {it.stockQty?.toLocaleString()} {it.unit}
-              </span>
-              <span className="badge" style={{ background: '#f8fafc', border: '1px solid #e2e8f0', color: '#475569' }}>
+                <span className="badge" style={{ background: 'var(--bg-muted)', color: 'var(--text-secondary)' }}>
+                  HSN: {it.hsn}
+                </span>
+                <span className="badge" style={{ background: 'var(--accent-cyan-light)', color: 'var(--accent-cyan-ink)' }}>
+                  Stock: {it.stockQty?.toLocaleString()} {it.unit}
+                </span>
+                <span className="badge" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', color: 'var(--text-secondary)' }}>
                 {it.category || 'General'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>Standard Rate:</span>
-              <span style={{ fontSize: '15px', fontWeight: 900, color: '#0f172a' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '6px', borderTop: '1px solid var(--border-light)' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Standard Rate:</span>
+                <span style={{ fontSize: '15px', fontWeight: 900, color: 'var(--text-main)' }}>
                 {formatINR(it.baseRate)} / {it.unit}
               </span>
             </div>
@@ -223,7 +223,7 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
         ))}
 
         {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '30px', color: '#64748b', fontSize: '13px' }}>
+            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
             No products found matching "{search}". Click <strong>+ Add Product</strong> or <strong>📥 Import Tally Items XML</strong> to add them.
           </div>
         )}
@@ -240,8 +240,8 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
             <form onSubmit={handleSaveItem}>
               <div className="modal-body">
                 {errorMsg && (
-                  <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                    {errorMsg}
+                    <div style={{ background: 'var(--danger-light)', color: 'var(--danger-ink)', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
+                      {errorMsg}
                   </div>
                 )}
                 <div className="form-group">
@@ -361,7 +361,7 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
             </div>
             <form onSubmit={handleImportXml}>
               <div className="modal-body">
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: '#475569', marginBottom: '14px', lineHeight: 1.5 }}>
+                  <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-light)', borderRadius: '8px', padding: '10px 12px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
                   <strong>How to export Stock Items from Tally Prime:</strong><br />
                   1. In Tally Prime, press <strong>Alt + E</strong> (Export) &gt; <strong>Masters</strong>.<br />
                   2. Select <strong>Stock Items</strong> (or <strong>All Masters</strong>).<br />
@@ -370,8 +370,8 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
                 </div>
 
                 {errorMsg && (
-                  <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
-                    {errorMsg}
+                    <div style={{ background: 'var(--danger-light)', color: 'var(--danger-ink)', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', fontSize: '12px' }}>
+                      {errorMsg}
                   </div>
                 )}
 

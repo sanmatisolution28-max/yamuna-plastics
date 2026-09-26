@@ -2570,6 +2570,22 @@ button, input, select, textarea {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
 }
 
+/* Chrome/Safari centre the segments inside a native date box when the field is
+   wider than the text. Pin them left so the date lines up with its label. */
+.meta-input,
+.meta-select {
+  text-align: left;
+}
+
+.meta-input[type='date']::-webkit-datetime-edit,
+.meta-input[type='date']::-webkit-datetime-edit-fields-wrapper,
+.meta-input[type='date']::-webkit-datetime-edit-text,
+.meta-input[type='date']::-webkit-datetime-edit-month-field,
+.meta-input[type='date']::-webkit-datetime-edit-day-field,
+.meta-input[type='date']::-webkit-datetime-edit-year-field {
+  text-align: left;
+}
+
 .tax-treatment-badge {
   display: inline-flex;
   align-items: center;
@@ -5255,7 +5271,38 @@ button, input, select, textarea {
     padding: 6px 8px;
   }
 
-  .btn-nav-primary {
+/* Tally bridge CTAs. These carry an inline background override, so without a
+   rule here the control falls back to browser defaults and ends up with
+   black / link-blue text on a saturated green fill. */
+.btn-primary-action,
+.btn-sync-action {
+  color: white;
+  border: none;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(4, 120, 87, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-primary-action:hover:not(:disabled),
+.btn-sync-action:hover {
+  filter: brightness(1.08);
+}
+
+.btn-primary-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.btn-nav-primary {
     padding: 7px 10px;
     font-size: 11.5px;
   }

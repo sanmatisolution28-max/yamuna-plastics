@@ -1173,8 +1173,8 @@ export default function BillForm({
                               padding: '4px 8px',
                               fontSize: '11px',
                               borderRadius: '4px',
-                              border: '1px solid #cbd5e1',
-                              background: '#f8fafc',
+                              border: '1px solid var(--border-medium)',
+                              background: 'var(--bg-card)',
                               cursor: 'pointer',
                               whiteSpace: 'nowrap'
                             }}
