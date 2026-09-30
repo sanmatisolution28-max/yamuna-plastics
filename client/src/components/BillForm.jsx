@@ -1555,13 +1555,12 @@ export default function BillForm({
             <input
               type="number"
               className="clean-input"
-              style={{ maxWidth: '240px' }}
               value={freightCharges}
               onChange={(e) => setFreightCharges(Number(e.target.value))}
             />
           </div>
 
-          <div className="summary-group" style={{ marginTop: '14px' }}>
+          <div className="summary-group">
             <label>Order Notes / Terms</label>
             <textarea
               className="clean-textarea"

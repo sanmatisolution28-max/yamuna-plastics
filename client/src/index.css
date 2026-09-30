@@ -149,6 +149,21 @@
   --tabbar-h: 45px;
   --chrome-h: calc(var(--navbar-h) + var(--tabbar-h));
 
+  /* Section rhythm. The Create Bill page had five card-level containers
+     each with its own padding (12/14/16/18/22px), its own radius (12/14/16px)
+     and its own bottom margin (14/18/20px), so nothing lined up vertically
+     down the page. These four values are the single source for all of them. */
+  --card-pad-y: 16px;
+  --card-pad-x: 20px;
+  --card-radius: 14px;
+  --card-gap: 16px;
+
+  /* One control height for every text input on the page. .clean-input was
+     8px/12.5px and .meta-input 7px/13px, which made the meta bar sit a few
+     pixels shorter than the fields below it. */
+  --control-pad-y: 8px;
+  --control-font: 12.5px;
+
   /* ==========================================================================
      PAGE ACCENT SYSTEM
      Each top-level page carries its own hue so you can tell at a glance
@@ -2895,13 +2910,25 @@ button, input, select, textarea {
 .invoice-meta-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  /* Six fields in one row on desktop. This was repeat(auto-fit, minmax(180px,
+     1fr)), which fit 7 across at 1400px and left the 6th field orphaned on
+     its own row for part of the width range. An explicit count guarantees
+     they always pair up evenly. */
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 14px;
-  margin-bottom: 14px;
+  margin-bottom: var(--card-gap);
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.02);
+}
+
+@media (max-width: 1200px) {
+  .invoice-meta-card { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 620px) {
+  .invoice-meta-card { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .meta-field-group {
@@ -2910,24 +2937,34 @@ button, input, select, textarea {
   gap: 3px;
 }
 
-.meta-field-group label {
-  font-size: 10.5px;
-  font-weight: 800;
-  color: var(--text-muted);
+/* One label treatment for the whole Create Bill page. These were four
+   separate rules drifting apart: the meta bar used 10.5px/800 with muted
+   ink, Transport used 11px/700 muted with no uppercase, and the party and
+   summary blocks used 11px/700 secondary with uppercase. Same conceptual
+   element, three different looks. */
+.meta-field-group label,
+.dispatch-col label,
+.compact-form-row label,
+.compact-form-grid-2 label,
+.summary-group label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .meta-input, .meta-select {
-  padding: 7px 10px;
+  padding: var(--control-pad-y) 10px;
   border: 1.5px solid var(--border-medium);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: var(--control-font);
   font-weight: 600;
   color: var(--text-main);
   outline: none;
   background: var(--bg-input);
   transition: all 0.2s;
+  box-sizing: border-box;
 }
 
 .meta-input:focus, .meta-select:focus {
@@ -3235,12 +3272,16 @@ button, input, select, textarea {
 
 .clean-input, .clean-textarea {
   width: 100%;
-  padding: 8px 10px;
+  padding: var(--control-pad-y) 10px;
   border: 1.5px solid var(--border-medium);
   border-radius: 8px;
-  font-size: 12.5px;
+  font-size: var(--control-font);
   color: var(--text-main);
   outline: none;
+  /* Native inputs default to a content-box height that ignores border and
+     padding, so two fields with identical font-size rendered at different
+     heights depending on which element they were. */
+  box-sizing: border-box;
 }
 
 .clean-input:focus, .clean-textarea:focus {
@@ -3252,9 +3293,9 @@ button, input, select, textarea {
 .products-table-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 14px;
-  padding: 16px 18px;
-  margin-bottom: 14px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  margin-bottom: var(--card-gap);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
 }
 
@@ -3414,39 +3455,44 @@ button, input, select, textarea {
 .dispatch-strip-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 14px;
-  padding: 14px 18px;
-  margin-bottom: 14px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  margin-bottom: var(--card-gap);
 }
 
 .dispatch-grid-four {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  /* Four fields, four columns. auto-fit could resolve to three across and
+     strand the Destination field alone on a second row. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .dispatch-grid-four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 520px) {
+  .dispatch-grid-four { grid-template-columns: 1fr; }
 }
 
 .dispatch-col {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-
-.dispatch-col label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-muted);
+  gap: 5px;
 }
 
 /* 6. Invoice Summary */
 .invoice-summary-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 20px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
+  margin-bottom: var(--card-gap);
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  gap: 20px;
+  gap: 24px;
+  align-items: start;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.02);
 }
 
@@ -3454,6 +3500,28 @@ button, input, select, textarea {
   .invoice-summary-card {
     grid-template-columns: 1fr;
   }
+}
+
+/* These three had no rules at all, so the summary column relied entirely on
+   the grid to place it and its labels inherited the browser default 16px
+   serif-ish styling instead of matching every other label on the page. */
+.summary-left-col,
+.summary-right-col {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+.summary-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.summary-group .clean-input,
+.summary-group .clean-textarea {
+  max-width: 100%;
 }
 
 .summary-grand-total-row {
@@ -3562,7 +3630,7 @@ button, input, select, textarea {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 18px;
-  margin-bottom: 18px;
+  margin-bottom: var(--card-gap);
   align-items: stretch;
 }
 
@@ -3575,12 +3643,20 @@ button, input, select, textarea {
 .party-panel-box {
   background: var(--bg-card);
   border: 1.5px solid var(--border-light);
-  border-radius: 14px;
-  padding: 16px 18px;
+  border-radius: var(--card-radius);
+  padding: var(--card-pad-y) var(--card-pad-x);
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
+  /* Without this a taller column stretches its panel but the fields inside
+     do not fill it, so the two party panels ended at visibly different
+     internal offsets even when the outer boxes matched. */
+  gap: 14px;
+}
+
+.party-panel-box > * {
+  min-width: 0;
 }
 
 .party-panel-box.bill-to-panel {
@@ -3788,15 +3864,7 @@ button, input, select, textarea {
 .compact-form-row {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.compact-form-row label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+  gap: 5px;
 }
 
 .compact-form-grid-2 {
@@ -3805,12 +3873,10 @@ button, input, select, textarea {
   gap: 12px;
 }
 
-.compact-form-grid-2 label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
+@media (max-width: 520px) {
+  .compact-form-grid-2 {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ==========================================================================
