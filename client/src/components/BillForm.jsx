@@ -8,6 +8,7 @@ export default function BillForm({
   onViewInvoice,
   parties = [],
   items = [],
+  invoices = [],
   settings,
   editingInvoice,
   preselectedPartyId,
@@ -98,6 +99,36 @@ export default function BillForm({
   useEffect(() => {
     refreshVoucherSequence();
   }, [isEditing]);
+
+  // Calculate highest existing voucher number and latest bill string
+  let maxVoucherNum = 0;
+  let latestInvoiceNo = null;
+  for (const inv of invoices) {
+    const match = String(inv.invoiceNo || '').match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxVoucherNum) {
+        maxVoucherNum = num;
+        latestInvoiceNo = inv.invoiceNo;
+      }
+    }
+  }
+
+  // Also check autoVoucherInfo if it identified higher from Tally or server
+  if (autoVoucherInfo?.latestIdentified && autoVoucherInfo.latestIdentified > maxVoucherNum) {
+    maxVoucherNum = autoVoucherInfo.latestIdentified;
+    const pfx = autoVoucherInfo.prefix || settings?.invoicePrefix || 'YP/26-27/';
+    latestInvoiceNo = `${pfx}${maxVoucherNum}`;
+  }
+
+  const prefix = settings?.invoicePrefix || autoVoucherInfo?.prefix || 'YP/26-27/';
+  const configuredNext = Number(settings?.nextInvoiceNumber);
+  if (!latestInvoiceNo && configuredNext && configuredNext > 1) {
+    maxVoucherNum = configuredNext - 1;
+    latestInvoiceNo = `${prefix}${maxVoucherNum}`;
+  }
+  const nextSeq = autoVoucherInfo?.nextSeq || Math.max(configuredNext || 1, maxVoucherNum + 1);
+  const newBillNo = autoVoucherInfo?.invoiceNo || `${prefix}${nextSeq}`;
 
   // Filtered Debtors list for search
   const filteredParties = parties.filter((p) => {
@@ -687,8 +718,42 @@ export default function BillForm({
     <div className="billing-workbench-container">
       {/* 1. Header Toolbar Strip */}
       <div className="workbench-top-bar">
-        <div className="bar-left">
+        <div className="bar-left" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
           <h2>{isEditing ? `Edit Invoice #${editingInvoice.invoiceNo}` : 'Create Bill'}</h2>
+          {!isEditing && (
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--border-medium)',
+                padding: '4px 12px',
+                borderRadius: '20px',
+                fontSize: '12px',
+                fontWeight: 700
+              }}
+            >
+              <span>🧾</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Latest Bill:</span>
+              <strong style={{ color: latestInvoiceNo ? 'var(--primary-ink)' : 'var(--text-secondary)' }}>
+                {latestInvoiceNo || 'None Yet'}
+              </strong>
+              <span
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 7px',
+                  borderRadius: '10px',
+                  background: 'var(--success-light)',
+                  color: 'var(--success-ink)',
+                  border: '1px solid currentColor',
+                  fontWeight: 800
+                }}
+              >
+                New: #{nextSeq}
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="bar-right">
@@ -742,9 +807,42 @@ export default function BillForm({
 
       {/* 2. Invoice Meta Bar */}
       <div className="invoice-meta-card">
+        {!isEditing && (
+          <div className="meta-field-group">
+            <label>Latest Created Bill #</label>
+            <div
+              className="meta-input"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                background: 'var(--bg-muted)',
+                fontWeight: 800,
+                fontSize: '13.5px',
+                color: latestInvoiceNo ? 'var(--text-primary)' : 'var(--text-muted)'
+              }}
+            >
+              <span>{latestInvoiceNo || 'None Yet (Fresh)'}</span>
+              <span
+                className="badge"
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 7px',
+                  borderRadius: '6px',
+                  background: 'var(--bg-card)',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border-medium)'
+                }}
+              >
+                Last Created
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="meta-field-group">
           <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Voucher / Invoice #</span>
+            <span>{isEditing ? 'Invoice #' : 'New Bill Number #'}</span>
             {!isEditing && (
               <button
                 type="button"
@@ -779,7 +877,7 @@ export default function BillForm({
             <span>
               {isEditing
                 ? editingInvoice.invoiceNo
-                : (autoVoucherInfo?.invoiceNo || `${settings?.invoicePrefix || 'YP/26-27/'}${settings?.nextInvoiceNumber || 1}`)}
+                : newBillNo}
             </span>
             <span
               className="badge"
@@ -793,14 +891,11 @@ export default function BillForm({
                 color: isEditing
                   ? 'var(--warning-ink)'
                   : 'var(--success-ink)',
-                border: '1px solid currentColor'
+                border: '1px solid currentColor',
+                fontWeight: 800
               }}
             >
-              {isEditing
-                ? 'Editing'
-                : autoVoucherInfo?.latestIdentified !== undefined
-                  ? `Auto Synced (Last: #${autoVoucherInfo.latestIdentified})`
-                  : 'Auto #'}
+              {isEditing ? 'Editing' : '⚡ Auto Next #'}
             </span>
           </div>
         </div>

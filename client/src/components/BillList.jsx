@@ -24,7 +24,12 @@ export default function BillList({ invoices = [], settings, onViewInvoice, onEdi
   }
 
   const prefix = settings?.invoicePrefix || 'YP/26-27/';
-  const nextSeq = Math.max(Number(settings?.nextInvoiceNumber) || 1, maxNum + 1);
+  const configuredNext = Number(settings?.nextInvoiceNumber);
+  if (!latestInvoiceNo && configuredNext && configuredNext > 1) {
+    maxNum = configuredNext - 1;
+    latestInvoiceNo = `${prefix}${maxNum}`;
+  }
+  const nextSeq = Math.max(configuredNext || 1, maxNum + 1);
   const nextInvoiceNo = `${prefix}${nextSeq}`;
 
   // Filter list

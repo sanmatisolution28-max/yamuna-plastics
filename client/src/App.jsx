@@ -147,12 +147,33 @@ useEffect(() => {
     return <LoginModal onLoginSuccess={(u) => setCurrentUser(u)} />;
   }
 
-  // Compute live KPI metrics
+  // Compute live KPI metrics & latest voucher numbering
   const totalBillsCount = invoices.length;
   const pendingCount = invoices.filter((i) => !i.tallySync?.synced).length;
   const syncedCount = totalBillsCount - pendingCount;
   const totalRevenue = invoices.reduce((acc, inv) => acc + Number(inv.grandTotal || 0), 0);
   const ewbCount = invoices.filter((i) => Boolean(i.ewayBill?.ewayBillNo || i.ewayBillNo)).length;
+
+  let maxVoucherNum = 0;
+  let latestInvoiceNo = null;
+  for (const inv of invoices) {
+    const match = String(inv.invoiceNo || '').match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxVoucherNum) {
+        maxVoucherNum = num;
+        latestInvoiceNo = inv.invoiceNo;
+      }
+    }
+  }
+  const prefix = settings?.invoicePrefix || 'YP/26-27/';
+  const configuredNext = Number(settings?.nextInvoiceNumber);
+  if (!latestInvoiceNo && configuredNext && configuredNext > 1) {
+    maxVoucherNum = configuredNext - 1;
+    latestInvoiceNo = `${prefix}${maxVoucherNum}`;
+  }
+  const nextSeq = Math.max(configuredNext || 1, maxVoucherNum + 1);
+  const nextInvoiceNo = `${prefix}${nextSeq}`;
 
   return (
     <div className="app-container">
@@ -178,6 +199,44 @@ useEffect(() => {
 
           {/* Center Connectivity & Quick Info */}
           <div className="system-status-group">
+            {/* Prominent Latest Bill Number Indicator at the very top */}
+            <div
+              className="status-pill"
+              style={{
+                background: 'var(--bg-card)',
+                border: '1.5px solid var(--border-medium)',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '7px',
+                padding: '5px 12px',
+                borderRadius: '20px',
+                fontWeight: 700
+              }}
+              onClick={() => setActiveTab('invoices')}
+              title={`Latest created bill: ${latestInvoiceNo || 'None yet'} | Next auto bill: ${nextInvoiceNo}`}
+            >
+              <span style={{ fontSize: '13px' }}>🧾</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Latest Bill:</span>
+              <strong style={{ color: latestInvoiceNo ? 'var(--primary-ink)' : 'var(--text-secondary)', fontSize: '13px' }}>
+                {latestInvoiceNo || 'None Yet'}
+              </strong>
+              <span
+                style={{
+                  fontSize: '10px',
+                  padding: '2px 7px',
+                  borderRadius: '10px',
+                  background: 'var(--success-light)',
+                  color: 'var(--success-ink)',
+                  border: '1px solid currentColor',
+                  fontWeight: 800,
+                  marginLeft: '2px'
+                }}
+              >
+                Next: #{nextSeq}
+              </span>
+            </div>
+
             <div
               className={`status-pill ${tallyOnline ? 'online' : 'standby'}`}
               onClick={() => setActiveTab('tally')}
@@ -331,6 +390,7 @@ useEffect(() => {
               <BillForm
                 parties={parties}
                 items={items}
+                invoices={invoices}
                 settings={settings}
                 editingInvoice={editingInvoice}
                 preselectedPartyId={preselectedPartyId}
