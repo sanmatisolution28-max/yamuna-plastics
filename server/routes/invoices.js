@@ -153,6 +153,8 @@ router.get('/next-number', async (req, res) => {
     <DESC>
       <STATICVARIABLES>
         <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+        <SVFROMDATE>20000101</SVFROMDATE>
+        <SVTODATE>20991231</SVTODATE>
       </STATICVARIABLES>
       <TDL>
         <TDLMESSAGE>
