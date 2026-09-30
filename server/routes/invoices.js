@@ -173,16 +173,22 @@ router.get('/next-number', async (req, res) => {
       });
       if (tRes.ok) {
         const tXml = await tRes.text();
-        const vchMatches = tXml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi);
+        const vchMatches = [...tXml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi)];
         let maxTally = 0;
         for (const m of vchMatches) {
           const num = extractInvoiceNumber(m[1]);
           if (num !== null && !isNaN(num) && num > maxTally) maxTally = num;
         }
-        if (maxTally > 0 && (Number(settings.nextInvoiceNumber) || 1) <= maxTally) {
-          settings.nextInvoiceNumber = maxTally + 1;
-          await updateNextInvoiceNumber(settings.nextInvoiceNumber);
+
+        let maxInvoices = 0;
+        for (const inv of list) {
+          const num = extractInvoiceNumber(inv.invoiceNo);
+          if (num !== null && !isNaN(num) && num > maxInvoices) maxInvoices = num;
         }
+
+        const targetNext = Math.max(maxInvoices, maxTally) + 1;
+        settings.nextInvoiceNumber = targetNext;
+        await updateNextInvoiceNumber(targetNext);
       }
     } catch {
       // Quietly ignore if Tally offline or Render cloud

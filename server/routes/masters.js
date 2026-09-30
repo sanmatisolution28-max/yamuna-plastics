@@ -547,23 +547,33 @@ router.post('/masters/tally-push', async (req, res) => {
     await writeJson(ITEMS_FILE, result.items);
 
     // Detect if Tally XML contains vouchers to auto-align nextInvoiceNumber
-    const vchMatches = xml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi);
-    let maxTallyNum = 0;
-    for (const m of vchMatches) {
-      const numMatch = m[1].match(/(\d+)$/);
-      if (numMatch) {
-        const n = parseInt(numMatch[1], 10);
-        if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
-      }
-    }
     let updatedNextNumber = undefined;
-    if (maxTallyNum > 0) {
-      const settings = await readJson(SETTINGS_FILE, {});
-      if ((Number(settings.nextInvoiceNumber) || 1) <= maxTallyNum) {
-        settings.nextInvoiceNumber = maxTallyNum + 1;
-        await writeJson(SETTINGS_FILE, settings);
+    if (xml.includes('SalesVoucherCollection') || xml.includes('<VOUCHERNUMBER')) {
+      const vchMatches = [...xml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi)];
+      let maxTallyNum = 0;
+      for (const m of vchMatches) {
+        const numMatch = m[1].match(/(\d+)$/);
+        if (numMatch) {
+          const n = parseInt(numMatch[1], 10);
+          if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
+        }
       }
-      updatedNextNumber = Math.max(Number(settings.nextInvoiceNumber) || 1, maxTallyNum + 1);
+
+      const settings = await readJson(SETTINGS_FILE, {});
+      const invoices = await readJson(INVOICES_FILE, []);
+      let maxInvoiceNum = 0;
+      for (const inv of invoices) {
+        const nm = String(inv.invoiceNo || '').match(/(\d+)$/);
+        if (nm) {
+          const n = parseInt(nm[1], 10);
+          if (!isNaN(n) && n > maxInvoiceNum) maxInvoiceNum = n;
+        }
+      }
+
+      const targetNext = Math.max(maxInvoiceNum, maxTallyNum) + 1;
+      settings.nextInvoiceNumber = targetNext;
+      await writeJson(SETTINGS_FILE, settings);
+      updatedNextNumber = targetNext;
     }
 
     res.json({
