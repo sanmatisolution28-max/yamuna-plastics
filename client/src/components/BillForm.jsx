@@ -98,6 +98,11 @@ export default function BillForm({
 
   useEffect(() => {
     refreshVoucherSequence();
+    // Continuously check for new bills created in Tally or by other users every 10 seconds
+    const timer = setInterval(() => {
+      refreshVoucherSequence();
+    }, 10000);
+    return () => clearInterval(timer);
   }, [isEditing]);
 
   // Calculate highest existing voucher number and latest bill string

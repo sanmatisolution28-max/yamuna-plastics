@@ -239,6 +239,15 @@ export function startCloudBridgeAgent() {
 
   console.log(`[Bridge Agent] Initialized. Monitoring ${CLOUD_URL} for 1-click sync commands...`);
 
+  // Periodic background voucher sync every 15 seconds to detect newly created Tally bills
+  setInterval(async () => {
+    try {
+      await executeTallySyncCycle();
+    } catch {
+      // Quietly ignore if Tally offline
+    }
+  }, 15000);
+
   // Poll loop: checks for triggers every 2 seconds
   setInterval(async () => {
     try {

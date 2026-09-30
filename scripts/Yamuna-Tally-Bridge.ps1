@@ -222,8 +222,16 @@ Write-Host ""
 
 # 2. Continuous real-time polling loop
 $consecutiveErrors = 0
+$lastAutoVoucherSync = [DateTime]::MinValue
+
 while ($true) {
     try {
+        # Continuous periodic sync every 15 seconds to detect any new bills created in Tally
+        if ((Get-Date) - $lastAutoVoucherSync -gt [TimeSpan]::FromSeconds(15)) {
+            $lastAutoVoucherSync = Get-Date
+            $null = Sync-TallyWithCloud -QuietIfOffline $true
+        }
+
         $poll = Invoke-RestMethod -Uri "$CloudUrl/api/bridge/poll" -Method Get -TimeoutSec 5 -ErrorAction SilentlyContinue
         if ($poll -and $poll.hasPending -and $poll.command) {
             Write-Host ""
@@ -243,6 +251,7 @@ while ($true) {
             
             Invoke-RestMethod -Uri "$CloudUrl/api/bridge/complete" -Method Post -Body $completeBody -ContentType "application/json" -TimeoutSec 8 | Out-Null
             Write-Host "[DONE] Cloud command completed successfully." -ForegroundColor Green
+            $lastAutoVoucherSync = Get-Date
         }
         $consecutiveErrors = 0
     } catch {
