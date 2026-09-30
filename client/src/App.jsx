@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BillForm from './components/BillForm';
 import BillList from './components/BillList';
-import TallySync from './components/TallySync';
 import PartyMaster from './components/PartyMaster';
 import ItemCatalog from './components/ItemCatalog';
 import InvoiceModal from './components/InvoiceModal';
@@ -21,7 +20,7 @@ export default function App() {
     }
   });
 
-  const [activeTab, setActiveTab] = useState('new-bill'); // new-bill | invoices | tally | parties | items | profile
+  const [activeTab, setActiveTab] = useState('new-bill'); // new-bill | invoices | parties | items | profilefile
   const [invoices, setInvoices] = useState([]);
   const [parties, setParties] = useState([]);
   const [items, setItems] = useState([]);
@@ -156,6 +155,42 @@ useEffect(() => {
     }
   };
 
+  // The one and only sync control in the app. It used to exist as five
+  // separate buttons (Create Bill, Customers, Bills list, and two on the
+  // Tally Sync page) all calling different endpoints. The bridge's SYNC_ALL
+  // command already pulls masters and pushes pending bills in one pass, so
+  // every one of those collapsed into this single call.
+  const [syncing, setSyncing] = useState(false);
+  const [syncNotice, setSyncNotice] = useState(null);
+
+  const handleSyncAll = async () => {
+    setSyncing(true);
+    setSyncNotice(null);
+    try {
+      const res = await api.triggerUniversalTallySync();
+      if (res.success) {
+        const pushed = res.syncedCount != null ? ` ${res.syncedCount} bill(s) pushed.` : '';
+        setSyncNotice({
+          type: 'success',
+          text: `${res.message || 'Synced with Tally Prime.'}${pushed}`
+        });
+      } else {
+        setSyncNotice({ type: 'warning', text: res.error || res.message || 'Tally Prime did not respond.' });
+      }
+      await loadData();
+    } catch (err) {
+      setSyncNotice({ type: 'warning', text: err.message || 'Could not reach Tally Prime on port 9000.' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Clear a stale banner as soon as the operator starts a different task.
+  useEffect(() => {
+    if (syncNotice) setSyncNotice(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   // If not logged in, show secure login page
   if (!currentUser) {
     return <LoginModal onLoginSuccess={(u) => setCurrentUser(u)} />;
@@ -227,24 +262,16 @@ useEffect(() => {
               <span className="pill-next">Next: #{nextSeq}</span>
             </div>
 
+            {/* Read-only connection indicator. Clicking it goes to Settings,
+                where the Tally connection test and setup live. */}
             <div
               className={`status-pill ${tallyOnline ? 'online' : 'standby'}`}
-              onClick={() => setActiveTab('tally')}
-              title={tallyOnline ? `Connected to ${activeCompany} on Port 9000` : 'Tally on Standby (Port 9000)'}
+              onClick={() => setActiveTab('profile')}
+              title={tallyOnline ? `Connected to ${activeCompany} on Port 9000` : 'Tally on Standby (Port 9000) - open Settings to test the connection'}
             >
               <span className={`status-indicator-dot ${tallyOnline ? '' : 'offline'}`}></span>
               <span>{tallyOnline ? `Tally: ${activeCompany}` : 'Tally Standby (Port 9000)'}</span>
             </div>
-
-            {pendingCount > 0 && (
-              <div
-                className="pending-alert-badge"
-                onClick={() => setActiveTab('tally')}
-                title="Click to view and sync pending bills with Tally"
-              >
-                <span>⚡ {pendingCount} Pending Sync</span>
-              </div>
-            )}
           </div>
 
           {/* Right Action Controls */}
@@ -264,13 +291,27 @@ useEffect(() => {
 
             <button
               type="button"
-              className="btn-nav-secondary"
+              className="btn-refresh"
               onClick={loadData}
               disabled={refreshing}
               title="Refresh all data"
+              aria-label="Refresh all data"
             >
-              {refreshing ? '⏳' : '🔄'}
-              <span className="btn-label-desktop">Refresh</span>
+              <span aria-hidden="true">{refreshing ? '⏳' : '🔄'}</span>
+            </button>
+
+            {/* The single sync control for the whole portal. */}
+            <button
+              type="button"
+              className="btn-sync-global"
+              onClick={handleSyncAll}
+              disabled={syncing}
+              title="Pull customers and products from Tally Prime, and push all pending bills"
+            >
+              <span aria-hidden="true">{syncing ? '⏳' : '🔄'}</span>
+              <span className="btn-label-desktop">
+                {syncing ? 'Syncing…' : pendingCount > 0 ? `Sync ${pendingCount} to Tally` : 'Sync Tally'}
+              </span>
             </button>
 
             <button
@@ -327,16 +368,6 @@ useEffect(() => {
 
           <button
             type="button"
-            className={`tab-button ${activeTab === 'tally' ? 'active' : ''}`}
-            onClick={() => setActiveTab('tally')}
-          >
-            <span className="tab-icon">🔌</span>
-            <span className="tab-text">Tally Prime Sync</span>
-            {pendingCount > 0 && <span className="tab-badge warning">{pendingCount}</span>}
-          </button>
-
-          <button
-            type="button"
             className={`tab-button ${activeTab === 'parties' ? 'active' : ''}`}
             onClick={() => setActiveTab('parties')}
           >
@@ -365,6 +396,22 @@ useEffect(() => {
           </button>
         </div>
       </nav>
+
+      {/* Result of the single global sync, shown once above whichever page the
+          operator is on so the outcome is never buried in a list. */}
+      {syncNotice && (
+        <div className={`global-sync-notice ${syncNotice.type}`} role="status">
+          <span>{syncNotice.text}</span>
+          <button
+            type="button"
+            className="global-sync-notice-close"
+            onClick={() => setSyncNotice(null)}
+            aria-label="Dismiss sync message"
+          >
+            ×
+          </button>
+        </div>
+      )}
 
       {/* Main Page Workspace */}
       <main className="app-workspace">
@@ -397,16 +444,6 @@ useEffect(() => {
                 settings={settings}
                 onViewInvoice={(inv) => setViewingInvoice(inv)}
                 onEditInvoice={handleEditInvoice}
-                onRefreshInvoices={loadData}
-              />
-            )}
-
-            {activeTab === 'tally' && (
-              <TallySync
-                invoices={invoices}
-                parties={parties}
-                items={items}
-                settings={settings}
                 onRefreshInvoices={loadData}
               />
             )}

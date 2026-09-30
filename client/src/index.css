@@ -140,6 +140,14 @@
      its text cannot follow the page palette. Pinned light values. */
   --on-dark: #e8eef7;
   --on-dark-muted: #9fb0c7;
+
+  /* Chrome heights for the stacked sticky layers. The navbar sits at top:0,
+     the tab bar directly beneath it, and the Create Bill sidebar beneath
+     that. These were previously hardcoded as 59px/140px at each use site,
+     which silently broke the moment the navbar's own padding changed. */
+  --navbar-h: 59px;
+  --tabbar-h: 45px;
+  --chrome-h: calc(var(--navbar-h) + var(--tabbar-h));
 }
 
 /* Base Reset & Typography */
@@ -190,6 +198,9 @@ button, input, select, textarea {
 .navbar-inner {
   max-width: 1400px;
   margin: 0 auto;
+  /* Height is driven by --navbar-h so the sticky offsets below stay aligned
+     with it. The padding is derived rather than picked. */
+  min-height: var(--navbar-h);
   padding: 10px 20px;
   display: flex;
   align-items: center;
@@ -324,25 +335,62 @@ button, input, select, textarea {
   box-shadow: 0 0 8px #f59e0b;
 }
 
-.pending-alert-badge {
-  background: linear-gradient(135deg, var(--fill-warning), var(--fill-warning-deep));
-  color: var(--text-inverted);
-  font-size: 11px;
-  font-weight: 800;
-  padding: 4px 10px;
-  border-radius: var(--radius-full);
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
+/* Icon-only refresh. The "Refresh" text label was removed along with the
+   old sync page because the symbol alone is unambiguous next to the labelled
+   sync and create buttons. */
+.btn-refresh {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-soft);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 7px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1;
   cursor: pointer;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.35);
   transition: all 0.2s ease;
 }
 
-.pending-alert-badge:hover {
-  background: var(--warning-strong);
-  color: var(--warning-on-fill);
+.btn-refresh:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text-inverted);
+}
+
+.btn-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* The single sync control. Deliberately a solid, high-contrast action: it is
+   the one button in the portal that writes to Tally Prime. */
+.btn-sync-global {
+  background: linear-gradient(135deg, var(--fill-success) 0%, var(--fill-success-strong) 100%);
+  color: #ffffff;
+  border: none;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.35);
+  transition: all 0.2s ease;
+}
+
+.btn-sync-global:hover:not(:disabled) {
+  background: var(--fill-success-deep);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
+}
+
+.btn-sync-global:disabled {
+  opacity: 0.65;
+  cursor: progress;
+  box-shadow: none;
+  transform: none;
 }
 
 .navbar-actions {
@@ -385,23 +433,6 @@ button, input, select, textarea {
 
 .btn-nav-primary.active-pulse {
   box-shadow: 0 0 0 2px #60a5fa, 0 4px 12px rgba(37, 99, 235, 0.4);
-}
-
-.btn-nav-secondary {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-soft);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 7px 12px;
-  border-radius: var(--radius-sm);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-nav-secondary:hover {
-  background: rgba(255, 255, 255, 0.18);
-  color: var(--text-inverted);
 }
 
 /* ==========================================================================
@@ -495,7 +526,7 @@ button, input, select, textarea {
   border-bottom: 1px solid var(--border-light);
   padding: 0 20px;
   position: sticky;
-  top: 59px;
+  top: var(--navbar-h);
   z-index: 90;
   box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
 }
@@ -503,7 +534,9 @@ button, input, select, textarea {
 .tabs-inner {
   max-width: 1400px;
   margin: 0 auto;
+  min-height: var(--tabbar-h);
   display: flex;
+  align-items: center;
   gap: 6px;
   overflow-x: auto;
   padding: 8px 0;
@@ -608,7 +641,7 @@ button, input, select, textarea {
 @media (min-width: 1024px) {
   .sticky-sidebar {
     position: sticky;
-    top: 140px;
+    top: calc(var(--chrome-h) + 20px);
   }
 }
 
@@ -977,11 +1010,9 @@ button, input, select, textarea {
 .search-input-wrap {
   position: relative;
   flex: 1;
-  max-width: 480px;
-}
-
-.search-input-wrap input {
-  padding-left: 38px;
+  max-width: 520px;
+  display: flex;
+  align-items: center;
 }
 
 .search-icon-pos {
@@ -1423,8 +1454,8 @@ button, input, select, textarea {
 }
 
 .modal-title {
-  font-size: 15px;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 900;
   color: var(--text-main);
 }
 
@@ -1518,6 +1549,103 @@ button, input, select, textarea {
   font-size: 11.5px;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+/* Tally setup row in Profile & Settings: connection test plus the two
+   one-time downloads the old Tally Sync page used to carry. */
+.tally-setup-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tally-setup-steps {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-light);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.tally-setup-steps p {
+  margin: 0;
+}
+
+.tally-setup-steps code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+  padding: 1px 5px;
+  color: var(--primary-ink);
+}
+
+/* Result banner for the single global sync. It sits above the workspace
+   rather than inside a page so the outcome is visible no matter which tab
+   the operator is on. */
+.global-sync-notice {
+  max-width: 1400px;
+  margin: 16px auto 0;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid;
+  animation: syncNoticeIn 0.22s ease;
+}
+
+@keyframes syncNoticeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.global-sync-notice.success {
+  background: var(--success-light);
+  color: var(--success-ink);
+  border-color: var(--success-border);
+}
+
+.global-sync-notice.warning {
+  background: var(--warning-light);
+  color: var(--warning-ink);
+  border-color: var(--warning-border);
+}
+
+.global-sync-notice.error {
+  background: var(--danger-light);
+  color: var(--danger-ink);
+  border-color: var(--danger-border);
+}
+
+.global-sync-notice-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.global-sync-notice-close:hover {
+  opacity: 1;
+}
+
+@media (max-width: 680px) {
+  .global-sync-notice {
+    margin: 12px 16px 0;
+  }
 }
 
 /* Login background: a single still gradient. */
@@ -2435,28 +2563,6 @@ button, input, select, textarea {
   border-radius: 9999px;
 }
 
-.btn-sync-tally-pill {
-  background: linear-gradient(135deg, var(--fill-success) 0%, var(--fill-success-strong) 100%);
-  color: white;
-  border: none;
-  padding: 7px 15px;
-  border-radius: 9999px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-  transition: all 0.2s ease;
-}
-
-.btn-sync-tally-pill:hover:not(:disabled) {
-  background: var(--fill-success-deep);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.45);
-}
-
 .btn-discard-draft {
   background: var(--bg-card);
   border: 1px solid var(--border-medium);
@@ -2932,7 +3038,7 @@ button, input, select, textarea {
 }
 
 .items-data-table td {
-  padding: 6px 8px;
+  padding: 9px 8px;
   border-bottom: 1px solid var(--border-light);
   vertical-align: middle;
 }
@@ -3083,15 +3189,6 @@ button, input, select, textarea {
   }
 }
 
-.summary-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--border-light);
-  font-size: 12.5px;
-  color: var(--text-secondary);
-}
-
 .summary-grand-total-row {
   display: flex;
   justify-content: space-between;
@@ -3120,9 +3217,10 @@ button, input, select, textarea {
 }
 
 .words-label {
+  color: var(--text-secondary);
+  font-size: 10px;
   font-weight: 700;
-  color: var(--text-muted);
-  margin-right: 6px;
+  margin-right: 4px;
 }
 
 .words-text {
@@ -3286,39 +3384,6 @@ button, input, select, textarea {
 }
 
 /* Ship To Segmented Switch */
-.shipto-segmented-switch {
-  display: inline-flex;
-  background: var(--bg-subtle);
-  border: 1.5px solid var(--border-medium);
-  padding: 3px;
-  border-radius: 9999px;
-  gap: 3px;
-}
-
-.switch-segment {
-  background: transparent;
-  border: none;
-  padding: 5px 12px;
-  border-radius: 9999px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.switch-segment.active {
-  background: var(--fill-success-deep);
-  color: var(--text-inverted);
-  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
-}
-
-.switch-segment.active.different {
-  background: var(--fill-primary);
-  color: var(--text-inverted);
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.35);
-}
-
 .party-info-card {
   background: var(--bg-app);
   border: 1.5px solid var(--border-light);
@@ -3411,35 +3476,6 @@ button, input, select, textarea {
   flex-shrink: 0;
 }
 
-.delivery-destination-note {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-app);
-  border: 1px solid var(--border-light);
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 11.5px;
-  color: var(--text-strong);
-  margin-top: 4px;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.btn-link-action {
-  background: none;
-  border: none;
-  color: var(--primary-ink);
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.btn-link-action:hover {
-  color: var(--primary-ink);
-}
-
 .ship-to-action-row {
   display: flex;
   justify-content: space-between;
@@ -3530,12 +3566,6 @@ button, input, select, textarea {
 
 .modal-title-icon {
   font-size: 24px;
-}
-
-.modal-title {
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--text-main);
 }
 
 .modal-subtitle {
@@ -3997,13 +4027,6 @@ button, input, select, textarea {
   padding: 6px 8px;
 }
 
-.words-label {
-  color: var(--text-secondary);
-  font-size: 10px;
-  font-weight: 700;
-  margin-right: 4px;
-}
-
 .words-val {
   color: var(--text-main);
   font-weight: 800;
@@ -4344,14 +4367,6 @@ button, input, select, textarea {
   margin-bottom: 14px;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.search-input-wrap {
-  position: relative;
-  flex: 1;
-  max-width: 520px;
-  display: flex;
-  align-items: center;
 }
 
 .search-input-wrap .search-icon {
@@ -4890,10 +4905,6 @@ button, input, select, textarea {
 
 .items-data-table tbody tr:hover {
   background: var(--bg-app);
-}
-
-.items-data-table td {
-  padding: 9px 8px;
 }
 
 .items-data-table .table-cell-input,

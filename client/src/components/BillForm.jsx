@@ -75,10 +75,8 @@ export default function BillForm({
   ]);
 
   const [saving, setSaving] = useState(false);
-  const [syncingTally, setSyncingTally] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successNotice, setSuccessNotice] = useState(null);
-  const [tallyNotice, setTallyNotice] = useState(null);
   const [autoVoucherInfo, setAutoVoucherInfo] = useState(null);
   const [loadingVoucherInfo, setLoadingVoucherInfo] = useState(false);
 
@@ -146,35 +144,6 @@ export default function BillForm({
       (p.address && p.address.toLowerCase().includes(q))
     );
   });
-
-  // Fetch live masters from Tally directly (1-click from software)
-  const handleSyncFromTally = async () => {
-    setSyncingTally(true);
-    setTallyNotice(null);
-    try {
-      const res = await api.triggerUniversalTallySync();
-      if (res.success) {
-        setTallyNotice({
-          type: 'success',
-          text: `✅ ${res.message || 'Customer Debtors synced from Tally Prime!'} (${res.totalParties || parties.length} Customers ready)`
-        });
-        await refreshVoucherSequence();
-        if (onRefresh) await onRefresh();
-      } else {
-        setTallyNotice({
-          type: 'warning',
-          text: res.error || 'Could not fetch from Tally. Make sure Tally Prime is open on Port 9000.'
-        });
-      }
-    } catch (err) {
-      setTallyNotice({
-        type: 'warning',
-        text: err.message || 'Could not connect to Tally Prime. Ensure Tally Prime is open on your PC.'
-      });
-    } finally {
-      setSyncingTally(false);
-    }
-  };
 
   // Auto-fill party details when customer is chosen from Tally list
   const handlePartyChange = (partyId) => {
@@ -343,7 +312,6 @@ export default function BillForm({
     setFreightCharges(0);
     setErrorMsg('');
     setSuccessNotice(null);
-    setTallyNotice(null);
     setLines([
       {
         id: `line-${Date.now()}`,
@@ -773,16 +741,6 @@ export default function BillForm({
             </button>
           )}
 
-          <button
-            type="button"
-            className="btn-sync-tally-pill"
-            onClick={handleSyncFromTally}
-            disabled={syncingTally}
-            title="Fetch Sundry Debtors from active Tally Prime"
-          >
-            {syncingTally ? '⏳ Syncing...' : '⚡ Sync Tally'}
-          </button>
-
           {isEditing && onCancelEdit && (
             <button type="button" className="btn-cancel-edit-pill" onClick={onCancelEdit}>
               ✕ Cancel
@@ -792,12 +750,6 @@ export default function BillForm({
       </div>
 
       {/* Alerts */}
-      {tallyNotice && (
-        <div className={`workbench-alert ${tallyNotice.type}`}>
-          <span>{tallyNotice.text}</span>
-        </div>
-      )}
-
       {successNotice && (
         <div className={`workbench-alert ${successNotice.type}`}>
           <span>{successNotice.text}</span>

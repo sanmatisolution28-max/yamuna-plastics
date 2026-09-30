@@ -6,7 +6,6 @@ export default function BillList({ invoices = [], settings, onViewInvoice, onEdi
   const [filter, setFilter] = useState('all'); // all | pending | synced
   const [search, setSearch] = useState('');
   const [syncingId, setSyncingId] = useState(null);
-  const [batchSyncing, setBatchSyncing] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   // Calculate highest existing voucher and next sequence
@@ -66,27 +65,6 @@ export default function BillList({ invoices = [], settings, onViewInvoice, onEdi
       setFeedback({ type: 'error', text: `Tally connection failed: ${err.message}` });
     } finally {
       setSyncingId(null);
-    }
-  };
-
-  const handleSyncAll = async () => {
-    setBatchSyncing(true);
-    setFeedback(null);
-    try {
-      const res = await api.syncAllToTally();
-      if (res.success) {
-        setFeedback({
-          type: 'success',
-          text: `🎉 Synced ${res.syncedCount || pendingCount} pending bills to Tally Prime!`
-        });
-      } else {
-        setFeedback({ type: 'error', text: `⚠️ ${res.error || res.message}` });
-      }
-      if (onRefreshInvoices) onRefreshInvoices();
-    } catch (err) {
-      setFeedback({ type: 'error', text: `Could not connect to Tally on port 9000: ${err.message}` });
-    } finally {
-      setBatchSyncing(false);
     }
   };
 
@@ -186,18 +164,7 @@ export default function BillList({ invoices = [], settings, onViewInvoice, onEdi
             </button>
           </div>
 
-          {pendingCount > 0 && (
-            <button
-              type="button"
-              className="btn-sync-tally-pill"
-              disabled={batchSyncing}
-              onClick={handleSyncAll}
-              style={{ fontSize: '11.5px', padding: '6px 12px' }}
-            >
-              {batchSyncing ? 'Syncing...' : `⚡ Sync ${pendingCount} to Tally`}
-            </button>
-          )}
-        </div>
+          </div>
       </div>
 
       {/* Invoices List - Clean Table */}

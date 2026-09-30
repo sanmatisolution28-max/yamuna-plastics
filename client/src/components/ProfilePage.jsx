@@ -611,7 +611,10 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
               </div>
             )}
 
-            <div style={{ marginTop: '14px', display: 'flex', gap: '8px' }}>
+            <div className="tally-setup-actions">
+              {/* Connection test only. This does not sync anything; it just
+                  reports whether Tally Prime is reachable. Actual syncing is
+                  the single control in the top navigation bar. */}
               <button
                 type="button"
                 className="btn-test-tally"
@@ -620,6 +623,33 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
               >
                 {tallyTesting ? '⏳ Testing Connection...' : '⚡ Test Tally Connection'}
               </button>
+
+              <a
+                href="/api/tally/download-bridge-bat"
+                download="Yamuna-Tally-Bridge.bat"
+                className="btn-outline-action"
+              >
+                ⬇️ Download Bridge (.bat)
+              </a>
+
+              <a
+                href="/api/tally/download-tdl"
+                download="YamunaPlastics_Sync.tdl"
+                className="btn-outline-action"
+              >
+                📄 Download TDL File
+              </a>
+            </div>
+
+            <div className="tally-setup-steps">
+              <p>
+                <strong>One-time setup:</strong> in Tally Prime press{' '}
+                <code>F1</code> &gt; <code>Settings</code> &gt; <code>Connectivity</code> &gt;{' '}
+                <code>Client/Server configuration</code>. Set <em>TallyPrime acts as</em> to{' '}
+                <strong>Both</strong> and <em>Port</em> to <strong>9000</strong>, then restart
+                Tally once. Run the downloaded bridge on the billing PC to enable automatic
+                syncing, or use the TDL for a button inside Tally.
+              </p>
             </div>
           </div>
         </div>

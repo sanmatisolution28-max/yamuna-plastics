@@ -5,7 +5,6 @@ export default function PartyMaster({ parties = [], onPartyAdded, onRefresh, onS
   const [search, setSearch] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedParty, setSelectedParty] = useState(null);
-  const [fetchingTally, setFetchingTally] = useState(false);
   const [statusNotice, setStatusNotice] = useState(null);
 
   const [newParty, setNewParty] = useState({
@@ -70,34 +69,6 @@ export default function PartyMaster({ parties = [], onPartyAdded, onRefresh, onS
     }
   };
 
-  // Direct 1-click fetch from Tally Prime
-  const handleFetchFromTally = async () => {
-    setFetchingTally(true);
-    setStatusNotice(null);
-    try {
-      const res = await api.triggerUniversalTallySync();
-      if (res.success) {
-        setStatusNotice({
-          type: 'success',
-          text: `⚡ ${res.message || 'Customers updated from Tally Prime!'} (${res.totalParties || parties.length} customers ready)`
-        });
-        if (onRefresh) onRefresh();
-      } else {
-        setStatusNotice({
-          type: 'warning',
-          text: res.error || 'Could not fetch from Tally. Make sure Tally is open on Port 9000.'
-        });
-      }
-    } catch (err) {
-      setStatusNotice({
-        type: 'warning',
-        text: err.message || '⚠️ Tally Prime connection timed out. Ensure Tally Prime is running on your PC.'
-      });
-    } finally {
-      setFetchingTally(false);
-    }
-  };
-
   return (
     <div className="party-directory-wrapper">
       {/* 1. Header Bar */}
@@ -110,15 +81,6 @@ export default function PartyMaster({ parties = [], onPartyAdded, onRefresh, onS
         </div>
 
         <div className="header-actions">
-          <button
-            type="button"
-            className="btn-sync-tally-pill"
-            onClick={handleFetchFromTally}
-            disabled={fetchingTally}
-          >
-            {fetchingTally ? '⏳ Fetching Tally...' : '⚡ Sync from Tally'}
-          </button>
-
           <button
             type="button"
             className="btn-add-customer-pill"
