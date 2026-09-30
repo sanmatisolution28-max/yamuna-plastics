@@ -553,10 +553,10 @@ router.post('/masters/tally-push', async (req, res) => {
     await writeJson(ITEMS_FILE, result.items);
 
     // Detect if Tally XML contains vouchers to auto-align nextInvoiceNumber
+    let maxTallyNum = 0;
     let updatedNextNumber = undefined;
     if (xml.includes('SalesVoucherCollection') || xml.includes('<VOUCHERNUMBER')) {
       const vchMatches = [...xml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi)];
-      let maxTallyNum = 0;
       for (const m of vchMatches) {
         const numMatch = m[1].match(/(\d+)$/);
         if (numMatch) {
