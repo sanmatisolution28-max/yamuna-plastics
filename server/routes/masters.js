@@ -167,12 +167,16 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
     const unitMatch = content.match(/<BASEUNITS[^>]*>([^<]+)<\/BASEUNITS>/i);
     const unit = unitMatch && unitMatch[1].trim() !== 'BASEUNITS' ? unitMatch[1].trim().toUpperCase() : 'KGS';
 
-    // Rate
-    let rate = 125.00;
-    const rateMatch = content.match(/<CLOSINGRATE[^>]*>([0-9.]+)/i) ||
-                      content.match(/<OPENINGRATE[^>]*>([0-9.]+)/i) ||
-                      content.match(/<STANDARDPRICELIST.LIST>[\s\S]*?<RATE>([0-9.]+)/i) ||
-                      content.match(/<RATE[^>]*>([0-9.]+)/i);
+    // Rate - Extract exact item rate from Tally
+    let rate = 0;
+    const rateMatch = content.match(/<RATE(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<CLOSINGRATE(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<OPENINGRATE(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<STANDARDPRICELIST\.LIST>[\s\S]*?<RATE(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<STANDARDCOSTLIST\.LIST>[\s\S]*?<RATE(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<STANDARDPRICE(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<STANDARDCOST(?:\s*|\s+[^>]*)>([0-9.]+)/i) ||
+                      content.match(/<LASTSALERATE(?:\s*|\s+[^>]*)>([0-9.]+)/i);
     if (rateMatch && Number(rateMatch[1]) > 0) {
       rate = Number(rateMatch[1]);
     }
@@ -392,7 +396,7 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
         <TDLMESSAGE>
           <COLLECTION NAME="StockCollection">
             <TYPE>StockItem</TYPE>
-            <FETCH>NAME, BASEUNITS, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS</FETCH>
+            <FETCH>NAME, BASEUNITS, RATE, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS, STANDARDPRICE, STANDARDCOST, LASTSALERATE</FETCH>
           </COLLECTION>
         </TDLMESSAGE>
       </TDL>

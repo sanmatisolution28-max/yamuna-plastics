@@ -108,13 +108,13 @@
 
 [Collection: YP_StockCollection]
     Type        : StockItem
-    Fetch       : Name, BaseUnits, ClosingRate, OpeningRate, HSNCode, HSNDetails
+    Fetch       : Name, BaseUnits, Rate, ClosingRate, OpeningRate, HSNCode, HSNDetails
 
 [Report: YP_MastersExportReport]
     Form        : YP_MastersExportForm
 
 [Form: YP_MastersExportForm]
-    Part        : YP_MastersExportPart
+    Part        : YP_MastersExportPart, YP_StockExportPart
 
 [Part: YP_MastersExportPart]
     Line        : YP_MastersExportLine
@@ -125,6 +125,16 @@
 
 [Field: YP_Fld_LedgerExportXml]
     Set as      : "<LEDGER NAME=" + $$String:$Name + '"><PARENT>Sundry Debtors</PARENT><PARTYGSTIN>' + $$String:$PartyGSTIN + '</PARTYGSTIN><STATENAME>' + $$String:$StateName + '</STATENAME><ADDRESS>' + $$String:$Address + '</ADDRESS><PINCODE>' + $$String:$Pincode + '</PINCODE><LEDGERPHONE>' + $$String:$LedgerPhone + '</LEDGERPHONE></LEDGER>'
+
+[Part: YP_StockExportPart]
+    Line        : YP_StockExportLine
+    Repeat      : YP_StockExportLine : YP_StockCollection
+
+[Line: YP_StockExportLine]
+    Field       : YP_Fld_StockExportXml
+
+[Field: YP_Fld_StockExportXml]
+    Set as      : "<STOCKITEM NAME=" + $$String:$Name + '"><BASEUNITS>' + $$String:$BaseUnits + '</BASEUNITS><RATE>' + $$String:$Rate + '</RATE><HSNCODE>' + $$String:$HSNCode + '</HSNCODE></STOCKITEM>'
 
 ;; =========================================================================
 ;; SECTION 3: Dashboard Report & Screen
