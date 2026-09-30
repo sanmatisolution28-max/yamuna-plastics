@@ -43,6 +43,26 @@ async function updateNextInvoiceNumber(nextNum) {
   }
 }
 
+export function extractInvoiceNumber(invoiceNo) {
+  if (!invoiceNo) return null;
+  const match = String(invoiceNo).match(/(\d+)$/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+export function getNextInvoiceSequence(list = [], settings = {}) {
+  let maxExisting = 0;
+  for (const inv of list) {
+    const num = extractInvoiceNumber(inv.invoiceNo);
+    if (num !== null && !isNaN(num) && num > maxExisting) {
+      maxExisting = num;
+    }
+  }
+
+  const configured = Number(settings?.nextInvoiceNumber);
+  const base = !isNaN(configured) && configured > 0 ? configured : 1;
+  return Math.max(base, maxExisting + 1);
+}
+
 // Convert number to Indian currency words
 function numberToIndianWords(num) {
   const a = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
@@ -123,6 +143,23 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// GET next available invoice sequence
+router.get('/next-number', async (req, res) => {
+  try {
+    const settings = await readSettings();
+    const list = await readInvoices();
+    const nextSeq = getNextInvoiceSequence(list, settings);
+    const prefix = settings.invoicePrefix || 'YP/26-27/';
+    res.json({
+      nextSeq,
+      prefix,
+      invoiceNo: `${prefix}${nextSeq}`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST new invoice
 router.post('/', async (req, res) => {
   try {
@@ -130,9 +167,15 @@ router.post('/', async (req, res) => {
     const settings = await readSettings();
     const list = await readInvoices();
 
-    // Auto-generate invoice number if not provided
-    const nextSeq = settings.nextInvoiceNumber || (100 + list.length + 1);
+    // Auto-generate invoice number if not provided, strictly sequential
+    const nextSeq = getNextInvoiceSequence(list, settings);
     const invoiceNo = body.invoiceNo || `${settings.invoicePrefix || 'YP/26-27/'}${nextSeq}`;
+
+    // Compute what the next sequence must be after saving this invoice
+    const customNum = extractInvoiceNumber(invoiceNo);
+    const advanceTo = customNum !== null && !isNaN(customNum)
+      ? Math.max(nextSeq + 1, customNum + 1)
+      : nextSeq + 1;
 
     // Place of Supply & Interstate calculation
     // Gujarat state code is "24"
@@ -265,7 +308,7 @@ router.post('/', async (req, res) => {
 
     list.unshift(newInvoice);
     await writeInvoices(list);
-    await updateNextInvoiceNumber(nextSeq + 1);
+    await updateNextInvoiceNumber(advanceTo);
 
     res.status(201).json(newInvoice);
   } catch (err) {

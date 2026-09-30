@@ -722,6 +722,36 @@ export default function BillForm({
       {/* 2. Invoice Meta Bar */}
       <div className="invoice-meta-card">
         <div className="meta-field-group">
+          <label>Voucher / Invoice #</label>
+          <div
+            className="meta-input"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'var(--bg-muted)',
+              fontWeight: 800,
+              fontSize: '13.5px',
+              color: 'var(--primary-ink)'
+            }}
+          >
+            <span>{isEditing ? editingInvoice.invoiceNo : `${settings?.invoicePrefix || 'YP/26-27/'}${settings?.nextInvoiceNumber || 1}`}</span>
+            <span
+              className="badge"
+              style={{
+                fontSize: '10px',
+                padding: '2px 6px',
+                borderRadius: '6px',
+                background: isEditing ? 'var(--warning-light)' : 'var(--success-light)',
+                color: isEditing ? 'var(--warning-ink)' : 'var(--success-ink)'
+              }}
+            >
+              {isEditing ? 'Editing' : 'Auto #'}
+            </span>
+          </div>
+        </div>
+
+        <div className="meta-field-group">
           <label>Invoice Date</label>
           <input
             type="date"

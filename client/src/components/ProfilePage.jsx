@@ -41,6 +41,15 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
   const [tallyTesting, setTallyTesting] = useState(false);
   const [tallyStatus, setTallyStatus] = useState(null);
 
+  // Invoice & Voucher Sequence State
+  const [seqForm, setSeqForm] = useState({
+    invoicePrefix: 'YP/26-27/',
+    nextInvoiceNumber: 1
+  });
+  const [seqLoading, setSeqLoading] = useState(false);
+  const [seqSuccess, setSeqSuccess] = useState('');
+  const [seqError, setSeqError] = useState('');
+
   useEffect(() => {
     if (settings?.company) {
       setCompanyForm((prev) => ({
@@ -57,6 +66,12 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
         ...prev,
         ...settings.tally
       }));
+    }
+    if (settings) {
+      setSeqForm({
+        invoicePrefix: settings.invoicePrefix || 'YP/26-27/',
+        nextInvoiceNumber: settings.nextInvoiceNumber || 1
+      });
     }
   }, [settings]);
 
@@ -125,6 +140,33 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
       setTallyStatus({ online: false, error: err.message });
     } finally {
       setTallyTesting(false);
+    }
+  };
+
+  // Handle Invoice Sequence Save
+  const handleSeqSave = async (e) => {
+    e.preventDefault();
+    setSeqError('');
+    setSeqSuccess('');
+    const nextNum = parseInt(seqForm.nextInvoiceNumber, 10);
+    if (isNaN(nextNum) || nextNum < 1) {
+      setSeqError('Next voucher number must be a valid positive number (e.g., 251).');
+      return;
+    }
+
+    try {
+      setSeqLoading(true);
+      const prefix = seqForm.invoicePrefix.trim() || 'YP/26-27/';
+      const updated = await api.updateSettings({
+        invoicePrefix: prefix,
+        nextInvoiceNumber: nextNum
+      });
+      setSeqSuccess(`✅ Sequence updated! The next generated bill will be "${prefix}${nextNum}".`);
+      if (onSettingsUpdated) onSettingsUpdated(updated);
+    } catch (err) {
+      setSeqError(err.message || 'Failed to update voucher sequence.');
+    } finally {
+      setSeqLoading(false);
     }
   };
 
@@ -402,6 +444,81 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
                   disabled={companyLoading}
                 >
                   {companyLoading ? 'Saving...' : '💾 Save Company Details'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Card: Invoice / Voucher Number Sequence */}
+          <div className="profile-section-card">
+            <div className="card-heading-group">
+              <div className="card-icon-bubble green">🔢</div>
+              <div>
+                <h3>Voucher &amp; Invoice Number Sequence</h3>
+                <p>Configure starting and sequential numbering for new bills</p>
+              </div>
+            </div>
+
+            {seqSuccess && (
+              <div className="profile-alert success">
+                <span>{seqSuccess}</span>
+              </div>
+            )}
+
+            {seqError && (
+              <div className="profile-alert error">
+                <span>⚠️ {seqError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSeqSave} className="profile-form">
+              <div className="form-row-split">
+                <div className="form-group form-col">
+                  <label className="profile-form-label">Invoice Prefix</label>
+                  <input
+                    type="text"
+                    className="profile-input"
+                    value={seqForm.invoicePrefix}
+                    onChange={(e) => setSeqForm({ ...seqForm, invoicePrefix: e.target.value })}
+                    placeholder="YP/26-27/"
+                    required
+                  />
+                  <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Prefix format (e.g. <code>YP/26-27/</code>)
+                  </small>
+                </div>
+
+                <div className="form-group form-col">
+                  <label className="profile-form-label">
+                    Next Voucher Number <span className="req">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    className="profile-input"
+                    style={{ fontWeight: 800, fontSize: '15px' }}
+                    value={seqForm.nextInvoiceNumber}
+                    onChange={(e) => setSeqForm({ ...seqForm, nextInvoiceNumber: e.target.value })}
+                    placeholder="251"
+                    required
+                  />
+                  <small style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px', display: 'block' }}>
+                    Next bill to create (e.g. if 250 created, enter <strong>251</strong>)
+                  </small>
+                </div>
+              </div>
+
+              <div style={{ background: 'var(--bg-muted)', padding: '10px 14px', borderRadius: '10px', fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', border: '1px solid var(--border-light)', lineHeight: 1.5 }}>
+                💡 <strong>Auto-Sequential Guarantee:</strong> When bill <code>{seqForm.invoicePrefix}{seqForm.nextInvoiceNumber || 1}</code> is generated, the sequence automatically advances to <strong>{(Number(seqForm.nextInvoiceNumber) || 1) + 1}</strong>.
+              </div>
+
+              <div className="profile-action-bar">
+                <button
+                  type="submit"
+                  className="btn-secondary-save"
+                  disabled={seqLoading}
+                >
+                  {seqLoading ? 'Saving Sequence...' : '💾 Save Voucher Sequence'}
                 </button>
               </div>
             </form>

@@ -47,6 +47,12 @@ export const api = {
     return res.json();
   },
 
+  getNextInvoiceNumber: async () => {
+    const res = await fetch(`${API_BASE}/invoices/next-number`);
+    if (!res.ok) throw new Error('Failed to fetch next invoice number');
+    return res.json();
+  },
+
   // Masters
   getParties: async () => {
     const res = await fetch(`${API_BASE}/parties`);

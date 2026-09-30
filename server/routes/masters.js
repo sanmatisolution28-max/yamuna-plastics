@@ -482,11 +482,30 @@ router.post('/masters/tally-push', async (req, res) => {
     await writeJson(PARTIES_FILE, result.parties);
     await writeJson(ITEMS_FILE, result.items);
 
+    // Detect if Tally XML contains vouchers to auto-align nextInvoiceNumber
+    const vchMatches = xml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi);
+    let maxTallyNum = 0;
+    for (const m of vchMatches) {
+      const numMatch = m[1].match(/(\d+)$/);
+      if (numMatch) {
+        const n = parseInt(numMatch[1], 10);
+        if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
+      }
+    }
+    if (maxTallyNum > 0) {
+      const settings = await readJson(SETTINGS_FILE, {});
+      if ((Number(settings.nextInvoiceNumber) || 1) <= maxTallyNum) {
+        settings.nextInvoiceNumber = maxTallyNum + 1;
+        await writeJson(SETTINGS_FILE, settings);
+      }
+    }
+
     res.json({
       success: true,
       message: `Tally Masters synchronized! (${result.newPartiesCount + result.updatedPartiesCount} debtors, ${result.newItemsCount + result.updatedItemsCount} items)`,
       partiesCount: result.parties.length,
-      itemsCount: result.items.length
+      itemsCount: result.items.length,
+      nextInvoiceNumber: maxTallyNum > 0 ? maxTallyNum + 1 : undefined
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
