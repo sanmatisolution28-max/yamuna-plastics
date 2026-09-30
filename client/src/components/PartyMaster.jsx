@@ -223,8 +223,8 @@ export default function PartyMaster({ parties = [], onPartyAdded, onRefresh, onS
           {filtered.length === 0 && (
             <div className="directory-empty-state">
               <span className="empty-icon">👥</span>
-              <h4>No customers found matching "{search}"</h4>
-              <p>Try clearing your search or click "⚡ Sync from Tally" to fetch customers from Tally Prime.</p>
+              <h4>{search ? `No customers found matching "${search}"` : 'No customers in directory yet'}</h4>
+              <p>{search ? 'Try clearing your search query.' : 'Click "+ Add Customer" or use "⚡ Sync from Tally" to load your customers from Tally Prime.'}</p>
             </div>
           )}
         </div>

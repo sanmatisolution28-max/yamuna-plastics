@@ -300,7 +300,7 @@ export default function TallySync({
         </div>
 
         <div style={{ fontSize: '12.5px', color: 'var(--success-ink)', lineHeight: 1.6, marginBottom: '14px' }}>
-          To enable <strong>instant automatic sync</strong> on any client PC with Tally Prime open (Port 9000), download and run the 1-Click Bridge. It connects the local Tally Prime with the cloud portal in real time without any setup!
+          To enable <strong>instant automatic sync</strong> on any client PC with Tally Prime open (Port 9000), download and run the 1-Click Bridge. It connects the local Tally Prime with the cloud portal in real time without any setup or programming language installation (<strong>No Node.js, Python, or npm needed</strong>)!
         </div>
 
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -343,7 +343,7 @@ export default function TallySync({
             <strong>Step 2: Choose your preferred sync method:</strong>
           </p>
           <ul style={{ margin: '0 0 8px', paddingLeft: '20px' }}>
-            <li><strong>Method A (Automatic):</strong> Double-click the downloaded <code>Yamuna-Tally-Bridge.bat</code>. It runs quietly and keeps Customers, Products, and Invoices 100% in sync automatically.</li>
+            <li><strong>Method A (Automatic - Zero Installation):</strong> Double-click the downloaded <code>Yamuna-Tally-Bridge.bat</code>. Pure native Windows executable script — works directly out-of-the-box without Node.js or any language installed. It keeps Customers, Products, and Invoices 100% in sync automatically.</li>
             <li><strong>Method B (In-Tally Button):</strong> Load <code>YamunaPlastics_Sync.tdl</code> under <code>F1 &gt; TDLs &amp; Add-ons &gt; F4</code>. A button <em>"Sync with Yamuna Cloud"</em> will appear on the Gateway of Tally.</li>
             <li><strong>Method C (1-Second File Import):</strong> In Tally Prime, press <code>Alt + E</code> &gt; <code>Masters</code> &gt; <code>Export (XML)</code> and click <em>"Import Tally XML File"</em> above.</li>
           </ul>

@@ -434,4 +434,17 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST clear all invoices
+router.post('/clear', async (req, res) => {
+  try {
+    await writeInvoices([]);
+    const settings = await readSettings();
+    settings.nextInvoiceNumber = 1;
+    await fs.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+    res.json({ success: true, message: 'All invoices cleared and next sequence reset to 1' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

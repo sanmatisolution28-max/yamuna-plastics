@@ -686,14 +686,58 @@ router.post('/sync-all-eway-bills', async (req, res) => {
 });
 
 // 11. Download 1-Click Tally Bridge Scripts & TDL
-router.get('/download-bridge-bat', (req, res) => {
-  const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.bat');
-  res.download(file, 'Yamuna-Tally-Bridge.bat');
+router.get('/download-bridge-bat', async (req, res) => {
+  try {
+    const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.bat');
+    let content = await fs.readFile(file, 'utf8');
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    let targetCloudUrl = process.env.CLOUD_URL;
+    if (!targetCloudUrl && host) {
+      targetCloudUrl = `${proto}://${host}`;
+    }
+    if (!targetCloudUrl) {
+      targetCloudUrl = 'https://yamuna.sanmatisolution.com';
+    }
+
+    if (targetCloudUrl && !targetCloudUrl.includes('localhost') && !targetCloudUrl.includes('127.0.0.1')) {
+      content = content.replace(/\$CloudUrl\s*=\s*"[^"]*"/, `$CloudUrl = "${targetCloudUrl}"`);
+    }
+
+    res.setHeader('Content-Disposition', 'attachment; filename="Yamuna-Tally-Bridge.bat"');
+    res.setHeader('Content-Type', 'application/x-bat');
+    res.send(content);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to download bridge file: ' + err.message });
+  }
 });
 
-router.get('/download-bridge-ps1', (req, res) => {
-  const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.ps1');
-  res.download(file, 'Yamuna-Tally-Bridge.ps1');
+router.get('/download-bridge-ps1', async (req, res) => {
+  try {
+    const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.ps1');
+    let content = await fs.readFile(file, 'utf8');
+
+    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.headers['x-forwarded-host'] || req.get('host');
+    let targetCloudUrl = process.env.CLOUD_URL;
+    if (!targetCloudUrl && host) {
+      targetCloudUrl = `${proto}://${host}`;
+    }
+    if (!targetCloudUrl) {
+      targetCloudUrl = 'https://yamuna.sanmatisolution.com';
+    }
+
+    if (targetCloudUrl && !targetCloudUrl.includes('localhost') && !targetCloudUrl.includes('127.0.0.1')) {
+      content = content.replace(/\$CloudUrl\s*=\s*"[^"]*"/, `$CloudUrl = "${targetCloudUrl}"`);
+    }
+
+    res.setHeader('Content-Disposition', 'attachment; filename="Yamuna-Tally-Bridge.ps1"');
+    res.setHeader('Content-Type', 'text/plain');
+    res.send(content);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to download bridge file: ' + err.message });
+  }
 });
 
 router.get('/download-tdl', (req, res) => {

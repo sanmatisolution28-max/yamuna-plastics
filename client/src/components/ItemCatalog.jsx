@@ -223,8 +223,12 @@ export default function ItemCatalog({ items, onItemAdded, onRefresh }) {
         ))}
 
         {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
-            No products found matching "{search}". Click <strong>+ Add Product</strong> or <strong>📥 Import Tally Items XML</strong> to add them.
+          <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', fontSize: '13px' }}>
+            {search ? (
+              <>No products found matching "{search}". Try clearing your search.</>
+            ) : (
+              <>No products in catalog yet. Click <strong>+ Add Product</strong> or sync directly from Tally Prime.</>
+            )}
           </div>
         )}
       </div>
