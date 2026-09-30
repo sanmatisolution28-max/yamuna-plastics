@@ -854,27 +854,7 @@ export default function BillForm({
         )}
 
         <div className="meta-field-group">
-          <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>{isEditing ? 'Invoice #' : 'New Bill Number #'}</span>
-            {!isEditing && (
-              <button
-                type="button"
-                onClick={refreshVoucherSequence}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--primary)',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  padding: 0
-                }}
-                title="Identify latest voucher number from system & Tally"
-              >
-                {loadingVoucherInfo ? '🔄 Checking...' : '🔄 Auto-Identify'}
-              </button>
-            )}
-          </label>
+          <label>{isEditing ? 'Invoice #' : 'New Bill Number #'}</label>
           <div
             className="meta-input"
             style={{
