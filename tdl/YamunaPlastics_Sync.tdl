@@ -134,7 +134,7 @@
     Field       : YP_Fld_StockExportXml
 
 [Field: YP_Fld_StockExportXml]
-    Set as      : "<STOCKITEM NAME=" + $$String:$Name + '"><BASEUNITS>' + $$String:$BaseUnits + '</BASEUNITS><RATE>' + $$String:$Rate + '</RATE><HSNCODE>' + $$String:$HSNCode + '</HSNCODE></STOCKITEM>'
+    Set as      : "<STOCKITEM NAME=" + $$String:$Name + '"><BASEUNITS>' + $$String:$BaseUnits + '</BASEUNITS><RATE>' + $$String:$Rate + '</RATE><HSNCODE>' + $$String:$HSNCode + '</HSNCODE><PARENT>' + $$String:$Parent + '</PARENT><DESCRIPTION>' + $$String:$Description + '</DESCRIPTION><CLOSINGBALANCE>' + $$String:$ClosingBalance + '</CLOSINGBALANCE></STOCKITEM>'
 
 ;; =========================================================================
 ;; SECTION 3: Dashboard Report & Screen

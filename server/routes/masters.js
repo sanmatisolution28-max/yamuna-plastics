@@ -161,12 +161,48 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
     const rawName = iMatch[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
     const content = iMatch[2];
 
+    // HSN Code
     const hsnMatch = content.match(/<HSNCODE[^>]*>([^<]+)<\/HSNCODE>/i) ||
-                     content.match(/<HSNDETAILS[^>]*>([^<]+)<\/HSNDETAILS>/i);
-    const hsn = hsnMatch && hsnMatch[1].trim() !== 'HSNCODE' ? hsnMatch[1].trim() : '39232100';
+                     content.match(/<HSNDETAILS[^>]*>([^<]+)<\/HSNDETAILS>/i) ||
+                     content.match(/<GSTHSNCODE[^>]*>([^<]+)<\/GSTHSNCODE>/i);
+    const hsn = hsnMatch && hsnMatch[1].trim() && hsnMatch[1].trim() !== 'HSNCODE' ? hsnMatch[1].trim() : '39232100';
 
-    const unitMatch = content.match(/<BASEUNITS[^>]*>([^<]+)<\/BASEUNITS>/i);
-    const unit = unitMatch && unitMatch[1].trim() !== 'BASEUNITS' ? unitMatch[1].trim().toUpperCase() : 'KGS';
+    // Unit of measurement
+    const unitMatch = content.match(/<BASEUNITS[^>]*>([^<]+)<\/BASEUNITS>/i) ||
+                      content.match(/<UOM[^>]*>([^<]+)<\/UOM>/i);
+    const unit = unitMatch && unitMatch[1].trim() && unitMatch[1].trim() !== 'BASEUNITS' ? unitMatch[1].trim().toUpperCase() : 'KGS';
+
+    // Group / Category
+    const parentMatch = content.match(/<PARENT[^>]*>([^<]+)<\/PARENT>/i) ||
+                        content.match(/<CATEGORY[^>]*>([^<]+)<\/CATEGORY>/i);
+    const category = parentMatch && parentMatch[1].trim() && parentMatch[1].trim() !== 'PARENT' ? parentMatch[1].trim() : 'Plastic Products';
+
+    // Description / Mailing name
+    const descMatch = content.match(/<DESCRIPTION[^>]*>([^<]+)<\/DESCRIPTION>/i) ||
+                      content.match(/<MAILINGNAME[^>]*>([^<]+)<\/MAILINGNAME>/i);
+    const description = descMatch && descMatch[1].trim() ? descMatch[1].trim() : rawName;
+
+    // Part Number
+    const partNoMatch = content.match(/<PARTNO[^>]*>([^<]+)<\/PARTNO>/i);
+    const partNo = partNoMatch ? partNoMatch[1].trim() : '';
+
+    // GST Rate (%)
+    let gstRate = 18;
+    const gstMatch = content.match(/<GSTRATE[^>]*>([0-9.]+)/i) ||
+                     content.match(/<IGSTRATE[^>]*>([0-9.]+)/i) ||
+                     content.match(/<INTEGRATEDTAX[^>]*>([0-9.]+)/i) ||
+                     content.match(/<GSTRATEDETAILS\.LIST>[\s\S]*?<GSTRATE[^>]*>([0-9.]+)/i);
+    if (gstMatch && Number(gstMatch[1]) > 0) {
+      gstRate = Number(gstMatch[1]);
+    }
+
+    // Stock Quantity
+    let stockQty = 0;
+    const qtyMatch = content.match(/<CLOSINGBALANCE[^>]*>([0-9.-]+)/i) ||
+                     content.match(/<OPENINGBALANCE[^>]*>([0-9.-]+)/i);
+    if (qtyMatch && !isNaN(parseFloat(qtyMatch[1]))) {
+      stockQty = Math.abs(parseFloat(qtyMatch[1]));
+    }
 
     // Rate - Extract exact item rate from Tally
     let rate = 0;
@@ -189,6 +225,11 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
         hsn: hsn || currentItems[existingIdx].hsn,
         unit: unit || currentItems[existingIdx].unit,
         baseRate: rate || currentItems[existingIdx].baseRate,
+        gstRate: gstRate || currentItems[existingIdx].gstRate || 18,
+        category: category || currentItems[existingIdx].category,
+        description: description || currentItems[existingIdx].description,
+        partNo: partNo || currentItems[existingIdx].partNo,
+        stockQty: stockQty !== undefined && stockQty !== 0 ? stockQty : currentItems[existingIdx].stockQty,
         source: 'Tally Prime'
       };
       updatedItemsCount++;
@@ -196,13 +237,14 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
       currentItems.push({
         id: `ITEM-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         name: rawName,
-        description: rawName,
+        description,
+        partNo,
         hsn,
         unit,
         baseRate: rate,
-        gstRate: 18,
-        stockQty: 1000,
-        category: 'Plastic Products',
+        gstRate,
+        stockQty,
+        category,
         source: 'Tally Prime'
       });
       newItemsCount++;
@@ -432,7 +474,7 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
         <TDLMESSAGE>
           <COLLECTION NAME="StockCollection">
             <TYPE>StockItem</TYPE>
-            <FETCH>NAME, BASEUNITS, RATE, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS, STANDARDPRICE, STANDARDCOST, LASTSALERATE</FETCH>
+            <FETCH>NAME, BASEUNITS, RATE, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS, STANDARDPRICE, STANDARDCOST, LASTSALERATE, PARENT, CATEGORY, DESCRIPTION, PARTNO, CLOSINGBALANCE, OPENINGBALANCE, GSTRATE, INTEGRATEDTAX, MAILINGNAME</FETCH>
           </COLLECTION>
         </TDLMESSAGE>
       </TDL>
