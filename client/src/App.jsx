@@ -215,40 +215,16 @@ useEffect(() => {
           <div className="system-status-group">
             {/* Prominent Latest Bill Number Indicator at the very top */}
             <div
-              className="status-pill"
-              style={{
-                background: 'var(--bg-card)',
-                border: '1.5px solid var(--border-medium)',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '5px 12px',
-                borderRadius: '20px',
-                fontWeight: 700
-              }}
+              className="status-pill latest-bill-pill"
               onClick={() => setActiveTab('invoices')}
               title={`Latest created bill: ${latestInvoiceNo || 'None yet'} | Next auto bill: ${nextInvoiceNo}`}
             >
-              <span style={{ fontSize: '13px' }}>🧾</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Latest Bill:</span>
-              <strong style={{ color: latestInvoiceNo ? 'var(--primary-ink)' : 'var(--text-secondary)', fontSize: '13px' }}>
+              <span className="pill-icon">🧾</span>
+              <span className="pill-label">Latest Bill:</span>
+              <strong className={latestInvoiceNo ? 'pill-value' : 'pill-value empty'}>
                 {latestInvoiceNo || 'None Yet'}
               </strong>
-              <span
-                style={{
-                  fontSize: '10px',
-                  padding: '2px 7px',
-                  borderRadius: '10px',
-                  background: 'var(--success-light)',
-                  color: 'var(--success-ink)',
-                  border: '1px solid currentColor',
-                  fontWeight: 800,
-                  marginLeft: '2px'
-                }}
-              >
-                Next: #{nextSeq}
-              </span>
+              <span className="pill-next">Next: #{nextSeq}</span>
             </div>
 
             <div

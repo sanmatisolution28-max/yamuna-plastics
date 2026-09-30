@@ -4,6 +4,7 @@ import { api } from '../utils/api';
 export default function TallySync({
   invoices = [],
   parties = [],
+  items = [],
   settings,
   onRefreshInvoices
 }) {
@@ -181,14 +182,14 @@ export default function TallySync({
         </div>
 
         {/* Counters */}
-        <div style={{ display: 'flex', gap: '10px', margin: '14px 0' }}>
-          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--success-ink)' }}>{syncedInvoices.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Synced in Tally</div>
+        <div className="stat-row">
+          <div className="stat-tile">
+            <div className="stat-value success">{syncedInvoices.length}</div>
+            <div className="stat-caption">Synced in Tally</div>
           </div>
-          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', fontWeight: 900, color: 'var(--warning-ink)' }}>{pendingInvoices.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Pending Sync</div>
+          <div className="stat-tile">
+            <div className="stat-value warning">{pendingInvoices.length}</div>
+            <div className="stat-caption">Pending Sync</div>
           </div>
         </div>
 
@@ -253,18 +254,18 @@ export default function TallySync({
           All customer parties (Sundry Debtors) and product catalog (Stock Items with HSN, GST rate, units &amp; rates) are synchronized directly with Tally Prime.
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '14px' }}>
-          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--success-ink)' }}>{parties.length}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Sundry Debtors (Customers)</div>
+        <div className="stat-row">
+          <div className="stat-tile">
+            <div className="stat-value success">{parties.length}</div>
+            <div className="stat-caption">Sundry Debtors (Customers)</div>
           </div>
-          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--primary-ink)' }}>⚡ Ready</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Stock Items (Products)</div>
+          <div className="stat-tile">
+            <div className="stat-value primary">{items.length}</div>
+            <div className="stat-caption">Stock Items (Products)</div>
           </div>
-          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--warning-ink)' }}>#{nextNumber || settings?.nextInvoiceNumber || 1}</div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Next Auto Voucher #</div>
+          <div className="stat-tile">
+            <div className="stat-value warning">#{nextNumber || settings?.nextInvoiceNumber || 1}</div>
+            <div className="stat-caption">Next Auto Voucher #</div>
           </div>
         </div>
 

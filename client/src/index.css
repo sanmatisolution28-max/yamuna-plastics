@@ -276,6 +276,36 @@ button, input, select, textarea {
   transition: all 0.2s ease;
 }
 
+/* The "Latest Bill" pill reads the counter, so it needs to be legible without
+   competing with the Tally status dot next to it. */
+.latest-bill-pill {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-medium);
+  gap: 7px;
+  padding: 5px 12px;
+  font-weight: 700;
+}
+
+.latest-bill-pill .pill-icon { font-size: 13px; }
+.latest-bill-pill .pill-label {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.latest-bill-pill .pill-value { color: var(--primary-ink); font-size: 13px; }
+.latest-bill-pill .pill-value.empty { color: var(--text-secondary); }
+.latest-bill-pill .pill-next {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--success-light);
+  color: var(--success-ink);
+  border: 1px solid currentColor;
+  font-weight: 800;
+  margin-left: 2px;
+}
+
 .status-pill:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.25);
@@ -1455,63 +1485,48 @@ button, input, select, textarea {
   position: relative;
 }
 
-/* Ambient Floating Glowing Orbs */
-.login-ambient-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.6;
-  animation: orbFloat 18s ease-in-out infinite alternate;
+/* Stat tile. The same shape was being repeated as a long inline style in five
+   places, which made every tweak a find-and-replace across the components. */
+.stat-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
 }
 
-.login-ambient-orb.orb-1 {
-  width: 380px;
-  height: 380px;
-  background: radial-gradient(circle, var(--fill-primary) 0%, rgba(37, 99, 235, 0) 70%);
-  top: -60px;
-  left: 10%;
-  animation-duration: 16s;
+.stat-tile {
+  flex: 1;
+  min-width: 110px;
+  background: var(--bg-card);
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  text-align: center;
 }
 
-.login-ambient-orb.orb-2 {
-  width: 420px;
-  height: 420px;
-  background: radial-gradient(circle, var(--fill-cyan) 0%, rgba(6, 182, 212, 0) 70%);
-  bottom: -80px;
-  right: 12%;
-  animation-duration: 22s;
+.stat-value {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
-.login-ambient-orb.orb-3 {
-  width: 300px;
-  height: 300px;
-  background: radial-gradient(circle, var(--fill-indigo) 0%, rgba(99, 102, 241, 0) 70%);
-  top: 40%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  animation-duration: 14s;
+.stat-value.success { color: var(--success-ink); }
+.stat-value.primary { color: var(--primary-ink); }
+.stat-value.warning { color: var(--warning-ink); }
+
+.stat-caption {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-muted);
 }
 
-@keyframes orbFloat {
-  0% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(30px, -25px) scale(1.08); }
-  100% { transform: translate(-25px, 35px) scale(0.95); }
-}
-
-/* Cyber Matrix Background Grid */
-.login-grid-pattern {
+/* Login background: a single still gradient. */
+.login-page-screen::before {
+  content: '';
   position: absolute;
   inset: 0;
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-  mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 80%);
+  background: radial-gradient(at 50% 0%, rgba(37, 99, 235, 0.10) 0px, transparent 55%);
   pointer-events: none;
-  z-index: 2;
 }
 
 /* Glassmorphic Portal Container */
@@ -1554,7 +1569,6 @@ button, input, select, textarea {
 
 /* Brand Emblem */
 .login-brand-badge {
-  position: relative;
   width: 68px;
   height: 68px;
   margin-bottom: 16px;
@@ -1580,20 +1594,6 @@ button, input, select, textarea {
 .brand-svg-icon {
   width: 64px;
   height: 64px;
-}
-
-.brand-pulse-ring {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(56, 189, 248, 0.35);
-  animation: pulseEmblem 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  pointer-events: none;
-}
-
-@keyframes pulseEmblem {
-  0%, 100% { opacity: 0.2; transform: scale(0.96); }
-  50% { opacity: 0.8; transform: scale(1.08); }
 }
 
 .login-title {
@@ -1644,14 +1644,6 @@ button, input, select, textarea {
   height: 7px;
   border-radius: 50%;
   background: var(--fill-success);
-  box-shadow: 0 0 8px #10b981;
-  animation: radarPulse 2s infinite;
-}
-
-@keyframes radarPulse {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-  70% { box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
 /* Error Alert Box */

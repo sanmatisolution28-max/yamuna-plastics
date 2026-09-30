@@ -33,12 +33,6 @@ export default function LoginModal({ onLoginSuccess }) {
 
   return (
     <div className="login-page-screen">
-      {/* Dynamic Ambient Background Elements */}
-      <div className="login-ambient-orb orb-1"></div>
-      <div className="login-ambient-orb orb-2"></div>
-      <div className="login-ambient-orb orb-3"></div>
-      <div className="login-grid-pattern"></div>
-
       <div className="login-card-container">
         {/* Glowing Top Accent Bar */}
         <div className="login-card-top-accent"></div>
@@ -63,7 +57,6 @@ export default function LoginModal({ onLoginSuccess }) {
                 </defs>
               </svg>
             </div>
-            <div className="brand-pulse-ring"></div>
           </div>
 
           <h1 className="login-title">
