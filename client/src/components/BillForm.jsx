@@ -805,6 +805,62 @@ export default function BillForm({
         </div>
       )}
 
+      {/* Prominent Voucher Sequence Banner inside Create New Bill */}
+      {!isEditing && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(14, 165, 233, 0.08) 100%)',
+            border: '1.5px solid rgba(37, 99, 235, 0.3)',
+            borderRadius: '12px',
+            padding: '12px 18px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ fontSize: '24px' }}>🧾</div>
+            <div>
+              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', color: 'var(--text-muted)', fontWeight: 800 }}>
+                Voucher Sequence Tracker
+              </div>
+              <div style={{ fontSize: '14px', color: 'var(--text-primary)', marginTop: '2px' }}>
+                Latest Created Bill:{' '}
+                <strong style={{ color: latestInvoiceNo ? 'var(--primary-ink)' : 'var(--text-secondary)', fontSize: '15px' }}>
+                  {latestInvoiceNo || 'None Yet (Fresh Database)'}
+                </strong>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>THIS NEW BILL WILL BE:</div>
+              <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--success-ink)' }}>{newBillNo}</div>
+            </div>
+            <button
+              type="button"
+              onClick={refreshVoucherSequence}
+              style={{
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-medium)',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                color: 'var(--primary)'
+              }}
+              title="Check latest voucher number from Tally & Server"
+            >
+              {loadingVoucherInfo ? '⏳ Checking...' : '🔄 Auto-Identify'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 2. Invoice Meta Bar */}
       <div className="invoice-meta-card">
         {!isEditing && (
