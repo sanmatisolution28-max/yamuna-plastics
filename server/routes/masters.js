@@ -9,6 +9,7 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 const PARTIES_FILE = path.join(DATA_DIR, 'parties.json');
 const ITEMS_FILE = path.join(DATA_DIR, 'items.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const INVOICES_FILE = path.join(DATA_DIR, 'invoices.json');
 
 const router = express.Router();
 
@@ -233,33 +234,46 @@ router.get('/parties', async (req, res) => {
 });
 
 router.post('/parties/clear', async (req, res) => {
-  try {
-    await writeJson(PARTIES_FILE, []);
-    res.json({ success: true, message: 'Parties reset to 0' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  // Protect data: Do not wipe customer parties
+  res.json({ success: true, message: 'Customers are persistent and protected from deletion.' });
 });
 
 router.post('/items/clear', async (req, res) => {
-  try {
-    await writeJson(ITEMS_FILE, []);
-    res.json({ success: true, message: 'Items reset to 0' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  // Protect data: Do not wipe products catalog
+  res.json({ success: true, message: 'Products are persistent and protected from deletion.' });
 });
 
 router.post('/parties', async (req, res) => {
   try {
     const parties = await readJson(PARTIES_FILE, []);
+    const name = (req.body.name || '').trim();
+    if (!name) {
+      return res.status(400).json({ error: 'Customer / Party name is required' });
+    }
+
     const gstin = (req.body.gstin || '').trim().toUpperCase();
     const stateCode = req.body.stateCode || (gstin ? gstin.slice(0, 2) : '24');
     const state = req.body.state || GST_STATE_MAP[stateCode] || 'Gujarat';
 
+    const existingIdx = parties.findIndex((p) => p && p.name && p.name.toLowerCase() === name.toLowerCase());
+    if (existingIdx >= 0) {
+      // Update existing customer in-place without removing other customers
+      parties[existingIdx] = {
+        ...parties[existingIdx],
+        ...req.body,
+        name,
+        state,
+        stateCode,
+        gstin,
+        pan: req.body.pan || (gstin ? gstin.slice(2, 12) : parties[existingIdx].pan)
+      };
+      await writeJson(PARTIES_FILE, parties);
+      return res.status(200).json(parties[existingIdx]);
+    }
+
     const newParty = {
       id: `PART-${Date.now()}`,
-      name: req.body.name || 'New Customer',
+      name,
       contactPerson: req.body.contactPerson || '',
       phone: req.body.phone || '',
       email: req.body.email || '',
@@ -295,13 +309,35 @@ router.get('/items', async (req, res) => {
 router.post('/items', async (req, res) => {
   try {
     const items = await readJson(ITEMS_FILE, []);
+    const name = (req.body.name || '').trim();
+    if (!name) {
+      return res.status(400).json({ error: 'Product name is required' });
+    }
+
+    const existingIdx = items.findIndex((it) => it && it.name && it.name.toLowerCase() === name.toLowerCase());
+    if (existingIdx >= 0) {
+      // Update existing item in-place without removing other products
+      items[existingIdx] = {
+        ...items[existingIdx],
+        ...req.body,
+        name,
+        unit: (req.body.unit || items[existingIdx].unit || 'KGS').toUpperCase(),
+        baseRate: Number(req.body.baseRate !== undefined ? req.body.baseRate : items[existingIdx].baseRate || 0),
+        gstRate: Number(req.body.gstRate !== undefined ? req.body.gstRate : items[existingIdx].gstRate || 18),
+        stockQty: Number(req.body.stockQty !== undefined ? req.body.stockQty : items[existingIdx].stockQty || 0),
+        category: req.body.category || items[existingIdx].category || 'General'
+      };
+      await writeJson(ITEMS_FILE, items);
+      return res.status(200).json(items[existingIdx]);
+    }
+
     const newItem = {
       id: `ITEM-${Date.now()}`,
-      name: req.body.name || 'New Plastic Item',
-      description: req.body.description || req.body.name || '',
+      name,
+      description: req.body.description || name,
       hsn: req.body.hsn || '39232100',
       unit: (req.body.unit || 'KGS').toUpperCase(),
-      baseRate: Number(req.body.baseRate || 100),
+      baseRate: Number(req.body.baseRate || 0),
       gstRate: Number(req.body.gstRate || 18),
       stockQty: Number(req.body.stockQty || 0),
       category: req.body.category || 'General',
@@ -491,8 +527,11 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
     const combinedXml = debtorXml + '\n' + stockXml;
     const result = parseTallyMastersXml(combinedXml, currentParties, currentItems);
 
-    await writeJson(PARTIES_FILE, result.parties);
-    await writeJson(ITEMS_FILE, result.items);
+    const finalParties = result.parties && result.parties.length > 0 ? result.parties : currentParties;
+    const finalItems = result.items && result.items.length > 0 ? result.items : currentItems;
+
+    await writeJson(PARTIES_FILE, finalParties);
+    await writeJson(ITEMS_FILE, finalItems);
 
     // Auto-identify latest voucher from Tally and sync sequence
     let maxTallyNum = 0;
@@ -507,8 +546,19 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
       }
       if (maxTallyNum > 0) {
         const settings = await readJson(SETTINGS_FILE, {});
-        if ((Number(settings.nextInvoiceNumber) || 1) <= maxTallyNum) {
-          settings.nextInvoiceNumber = maxTallyNum + 1;
+        const invoices = await readJson(INVOICES_FILE, []);
+        let maxInvoiceNum = 0;
+        for (const inv of invoices) {
+          const nm = String(inv.invoiceNo || '').match(/(\d+)$/);
+          if (nm) {
+            const n = parseInt(nm[1], 10);
+            if (!isNaN(n) && n > maxInvoiceNum) maxInvoiceNum = n;
+          }
+        }
+        const currentNext = Number(settings.nextInvoiceNumber) || 1;
+        const targetNext = Math.max(maxInvoiceNum, maxTallyNum) + 1;
+        if (targetNext > currentNext) {
+          settings.nextInvoiceNumber = targetNext;
           await writeJson(SETTINGS_FILE, settings);
         }
       }
@@ -517,10 +567,10 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
     res.json({
       success: true,
       message: `Fetched ${result.newPartiesCount + result.updatedPartiesCount} customers and ${result.newItemsCount + result.updatedItemsCount} stock items from Tally Prime!`,
-      totalParties: result.parties.length,
-      totalItems: result.items.length,
-      parties: result.parties,
-      items: result.items,
+      totalParties: finalParties.length,
+      totalItems: finalItems.length,
+      parties: finalParties,
+      items: finalItems,
       latestTallyVoucher: maxTallyNum > 0 ? maxTallyNum : undefined,
       nextInvoiceNumber: maxTallyNum > 0 ? maxTallyNum + 1 : undefined
     });
@@ -549,8 +599,12 @@ router.post('/masters/tally-push', async (req, res) => {
 
     const result = parseTallyMastersXml(xml, currentParties, currentItems);
 
-    await writeJson(PARTIES_FILE, result.parties);
-    await writeJson(ITEMS_FILE, result.items);
+    // Safeguard: Never overwrite with empty array if existing data was present!
+    const finalParties = result.parties && result.parties.length > 0 ? result.parties : currentParties;
+    const finalItems = result.items && result.items.length > 0 ? result.items : currentItems;
+
+    await writeJson(PARTIES_FILE, finalParties);
+    await writeJson(ITEMS_FILE, finalItems);
 
     // Detect if Tally XML contains vouchers to auto-align nextInvoiceNumber
     let maxTallyNum = 0;
@@ -576,17 +630,20 @@ router.post('/masters/tally-push', async (req, res) => {
         }
       }
 
+      const currentNext = Number(settings.nextInvoiceNumber) || 1;
       const targetNext = Math.max(maxInvoiceNum, maxTallyNum) + 1;
-      settings.nextInvoiceNumber = targetNext;
-      await writeJson(SETTINGS_FILE, settings);
-      updatedNextNumber = targetNext;
+      if (targetNext > currentNext) {
+        settings.nextInvoiceNumber = targetNext;
+        await writeJson(SETTINGS_FILE, settings);
+      }
+      updatedNextNumber = settings.nextInvoiceNumber || targetNext;
     }
 
     res.json({
       success: true,
       message: `Tally Masters synchronized! (${result.newPartiesCount + result.updatedPartiesCount} debtors, ${result.newItemsCount + result.updatedItemsCount} items)`,
-      partiesCount: result.parties.length,
-      itemsCount: result.items.length,
+      partiesCount: finalParties.length,
+      itemsCount: finalItems.length,
       latestTallyVoucher: maxTallyNum > 0 ? maxTallyNum : undefined,
       nextInvoiceNumber: updatedNextNumber
     });
@@ -608,16 +665,19 @@ router.post('/masters/import-tally-xml', async (req, res) => {
 
     const result = parseTallyMastersXml(xml, currentParties, currentItems);
 
-    await writeJson(PARTIES_FILE, result.parties);
-    await writeJson(ITEMS_FILE, result.items);
+    const finalParties = result.parties && result.parties.length > 0 ? result.parties : currentParties;
+    const finalItems = result.items && result.items.length > 0 ? result.items : currentItems;
+
+    await writeJson(PARTIES_FILE, finalParties);
+    await writeJson(ITEMS_FILE, finalItems);
 
     res.json({
       success: true,
       message: `Tally XML parsed successfully! (${result.newPartiesCount} new debtors, ${result.newItemsCount} new items)`,
-      totalParties: result.parties.length,
-      totalItems: result.items.length,
-      parties: result.parties,
-      items: result.items
+      totalParties: finalParties.length,
+      totalItems: finalItems.length,
+      parties: finalParties,
+      items: finalItems
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

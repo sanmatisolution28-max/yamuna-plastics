@@ -88,13 +88,15 @@ useEffect(() => {
 
   useEffect(() => {
     loadData();
-    // Continuous background poll every 12 seconds for Tally status, new invoices, and sequence updates
+    // Continuous background poll every 10 seconds for Tally status, invoices, customers, and product catalog updates
     const interval = setInterval(async () => {
       try {
-        const [tStat, freshSettings, freshInvoices] = await Promise.all([
+        const [tStat, freshSettings, freshInvoices, freshParties, freshItems] = await Promise.all([
           api.getTallyStatus().catch(() => ({ online: false })),
           api.getSettings().catch(() => null),
-          api.getInvoices().catch(() => null)
+          api.getInvoices().catch(() => null),
+          api.getParties().catch(() => null),
+          api.getItems().catch(() => null)
         ]);
         setTallyOnline(Boolean(tStat?.online));
         if (tStat?.activeCompany || tStat?.configuredCompany) {
@@ -102,10 +104,12 @@ useEffect(() => {
         }
         if (freshSettings) setSettings(freshSettings);
         if (freshInvoices && Array.isArray(freshInvoices)) setInvoices(freshInvoices);
+        if (freshParties && Array.isArray(freshParties)) setParties(freshParties);
+        if (freshItems && Array.isArray(freshItems)) setItems(freshItems);
       } catch {
         // Quiet poll error
       }
-    }, 12000);
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
