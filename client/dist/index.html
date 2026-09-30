@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏭</text></svg>" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Yamuna Plastics · Mobile Billing & Tally Engine</title>
+    <!-- Set the theme before first paint so the app never flashes the wrong colours. -->
+    <script>
+      (function () {
+        try {
+          var saved = window.localStorage.getItem('yamuna.theme');
+          if (saved !== 'light' && saved !== 'dark') {
+            saved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+          document.documentElement.setAttribute('data-theme', saved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
+    <!-- Google Fonts for modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-D0qzo1kz.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-C2Xw4vpF.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

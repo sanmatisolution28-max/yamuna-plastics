@@ -5,8 +5,7 @@ client/node_modules/
 server/node_modules/
 
 # Production build outputs
-dist/
-client/dist/
+/dist/
 build/
 
 # Executables & large binaries
