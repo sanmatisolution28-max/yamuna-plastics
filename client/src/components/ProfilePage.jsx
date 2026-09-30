@@ -246,7 +246,7 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
         {/* Left Column: Security & Authentication */}
         <div className="profile-col-main">
           {/* Card A: Change Password */}
-          <div className="profile-section-card">
+          <div className="profile-section-card tone-green">
             <div className="card-heading-group">
               <div className="card-icon-bubble green">🔑</div>
               <div>
@@ -345,7 +345,7 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
           </div>
 
           {/* Card B: Security Checklist */}
-          <div className="profile-section-card secondary">
+          <div className="profile-section-card secondary tone-blue">
             <div className="card-heading-group">
               <div className="card-icon-bubble blue">🛡️</div>
               <div>
@@ -380,7 +380,7 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
         {/* Right Column: Company & Tally Configuration */}
         <div className="profile-col-side">
           {/* Card C: Company Master Profile */}
-          <div className="profile-section-card">
+          <div className="profile-section-card tone-purple">
             <div className="card-heading-group">
               <div className="card-icon-bubble purple">🏭</div>
               <div>
@@ -477,10 +477,10 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
           </div>
 
           {/* Card: Invoice / Voucher Number Sequence */}
-          <div className="profile-section-card">
+          <div className="profile-section-card tone-amber">
             <div className="card-heading-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div className="card-icon-bubble green">🔢</div>
+                <div className="card-icon-bubble amber">🔢</div>
                 <div>
                   <h3>Voucher &amp; Invoice Number Sequence</h3>
                   <p>Automatic sequential numbering &amp; Tally Prime synchronization</p>
@@ -573,9 +573,9 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
           </div>
 
           {/* Card D: Tally Prime Integration Status */}
-          <div className="profile-section-card">
+          <div className="profile-section-card tone-teal">
             <div className="card-heading-group">
-              <div className="card-icon-bubble amber">🔌</div>
+              <div className="card-icon-bubble green">🔌</div>
               <div>
                 <h3>Tally Prime Integration Setup</h3>
                 <p>Zero-Code client connection settings</p>

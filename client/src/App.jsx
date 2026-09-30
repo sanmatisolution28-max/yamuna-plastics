@@ -196,6 +196,18 @@ useEffect(() => {
     return <LoginModal onLoginSuccess={(u) => setCurrentUser(u)} />;
   }
 
+  // Every page gets its own accent hue. Setting one class on the workspace
+  // wrapper is enough: the CSS derives the tints, borders and card strips
+  // from --accent, so the whole screen shifts colour together instead of
+  // each component inventing its own.
+  const PAGE_ACCENT = {
+    'new-bill': 'accent-primary',
+    invoices: 'accent-primary',
+    parties: 'accent-teal',
+    items: 'accent-amber',
+    profile: 'accent-purple'
+  };
+
   // Compute live KPI metrics & latest voucher numbering
   const totalBillsCount = invoices.length;
   const pendingCount = invoices.filter((i) => !i.tallySync?.synced).length;
@@ -414,7 +426,7 @@ useEffect(() => {
       )}
 
       {/* Main Page Workspace */}
-      <main className="app-workspace">
+      <main className={`app-workspace ${PAGE_ACCENT[activeTab] || 'accent-primary'}`}>
         {loading ? (
           <div className="loading-state-card">
             <div className="loading-spinner">⏳</div>

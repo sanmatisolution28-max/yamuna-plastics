@@ -148,6 +148,44 @@
   --navbar-h: 59px;
   --tabbar-h: 45px;
   --chrome-h: calc(var(--navbar-h) + var(--tabbar-h));
+
+  /* ==========================================================================
+     PAGE ACCENT SYSTEM
+     Each top-level page carries its own hue so you can tell at a glance
+     which one you are on, instead of every tab and card reading the same
+     shade of blue. --accent is the hue, and the derived tokens below it are
+     what components actually consume.
+     ========================================================================== */
+  --accent: #2563eb;
+  --accent-ink: #1e40af;
+  --accent-tint: #eff6ff;
+  --accent-border: #bfdbfe;
+  --accent-soft: #60a5fa;
+  --accent-glow: rgba(37, 99, 235, 0.18);
+
+  /* Purple - Profile & Settings */
+  --accent-purple: #7c3aed;
+  --accent-purple-ink: #5b21b6;
+  --accent-purple-tint: #f5f3ff;
+  --accent-purple-border: #ddd6fe;
+
+  /* Teal - Customers */
+  --accent-teal: #0d9488;
+  --accent-teal-ink: #115e59;
+  --accent-teal-tint: #f0fdfa;
+  --accent-teal-border: #99f6e4;
+
+  /* Amber - Products */
+  --accent-amber: #d97706;
+  --accent-amber-ink: #92400e;
+  --accent-amber-tint: #fffbeb;
+  --accent-amber-border: #fde68a;
+
+  /* Rose - destructive actions */
+  --accent-rose: #e11d48;
+  --accent-rose-ink: #9f1239;
+  --accent-rose-tint: #fff1f2;
+  --accent-rose-border: #fecdd3;
 }
 
 /* Base Reset & Typography */
@@ -179,7 +217,85 @@ button, input, select, textarea {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  /* A soft multi-hue wash instead of flat grey. Two very wide, very low
+     opacity radial gradients in the brand colours give the page some depth
+     without tinting the white cards that sit on top of it. */
   background-color: var(--bg-app);
+  background-image:
+    radial-gradient(1100px 520px at 8% -8%, rgba(99, 102, 241, 0.13), transparent 62%),
+    radial-gradient(1000px 500px at 96% 2%, rgba(13, 148, 136, 0.11), transparent 60%),
+    radial-gradient(900px 620px at 50% 108%, rgba(217, 119, 6, 0.07), transparent 65%);
+  background-attachment: fixed;
+}
+
+/* Per-page accent. Each tab sets one of these on the workspace wrapper, and
+   every component below reads --accent-* rather than hardcoding a hue.
+   The tints are lighter in dark mode (declared in the dark block below) so
+   the same class reads correctly on both backgrounds. */
+.accent-primary {
+  --accent: var(--accent-primary, #2563eb);
+  --accent-ink: var(--accent-primary-ink, #1e40af);
+  --accent-tint: var(--primary-light);
+  --accent-border: #bfdbfe;
+  --accent-soft: var(--primary-soft);
+  --accent-glow: rgba(37, 99, 235, 0.16);
+}
+
+.accent-purple {
+  --accent: var(--accent-purple);
+  --accent-ink: var(--accent-purple-ink);
+  --accent-tint: var(--accent-purple-tint);
+  --accent-border: var(--accent-purple-border);
+  --accent-soft: var(--purple-soft);
+  --accent-glow: rgba(124, 58, 237, 0.16);
+}
+
+.accent-teal {
+  --accent: var(--accent-teal);
+  --accent-ink: var(--accent-teal-ink);
+  --accent-tint: var(--accent-teal-tint);
+  --accent-border: var(--accent-teal-border);
+  --accent-soft: #2dd4bf;
+  --accent-glow: rgba(13, 148, 136, 0.16);
+}
+
+.accent-amber {
+  --accent: var(--accent-amber);
+  --accent-ink: var(--accent-amber-ink);
+  --accent-tint: var(--accent-amber-tint);
+  --accent-border: var(--accent-amber-border);
+  --accent-soft: var(--warning-strong);
+  --accent-glow: rgba(217, 119, 6, 0.16);
+}
+
+/* Dark mode needs its own tints: the light ones are pale washes and would
+   disappear against the dark card. These are deep, desaturated equivalents. */
+[data-theme='dark'] .accent-primary {
+  --accent-ink: var(--primary-soft-text);
+  --accent-tint: rgba(37, 99, 235, 0.16);
+  --accent-border: rgba(96, 165, 250, 0.35);
+  --accent-glow: rgba(37, 99, 235, 0.30);
+}
+
+[data-theme='dark'] .accent-purple {
+  --accent-ink: #c4b5fd;
+  --accent-tint: rgba(124, 58, 237, 0.18);
+  --accent-border: rgba(167, 139, 250, 0.35);
+  --accent-glow: rgba(124, 58, 237, 0.30);
+}
+
+[data-theme='dark'] .accent-teal {
+  --accent-ink: #5eead4;
+  --accent-tint: rgba(13, 148, 136, 0.18);
+  --accent-border: rgba(45, 212, 191, 0.35);
+  --accent-glow: rgba(13, 148, 136, 0.30);
+}
+
+[data-theme='dark'] .accent-amber {
+  --accent-ink: var(--warning-strong);
+  --accent-tint: rgba(217, 119, 6, 0.18);
+  --accent-border: rgba(251, 191, 36, 0.35);
+  --accent-glow: rgba(217, 119, 6, 0.30);
 }
 
 /* Top Executive Navbar */
@@ -573,11 +689,13 @@ button, input, select, textarea {
   color: var(--text-main);
 }
 
+/* The active tab adopts whatever --accent the page set on its wrapper, so
+   the colour follows the section rather than being hardcoded here. */
 .tab-button.active {
-  background: var(--primary-light);
-  color: var(--primary-ink);
-  border-color: rgba(37, 99, 235, 0.25);
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+  background: var(--accent-tint);
+  color: var(--accent-ink);
+  border-color: var(--accent-border);
+  box-shadow: 0 2px 8px var(--accent-glow);
 }
 
 .tab-badge {
@@ -610,6 +728,7 @@ button, input, select, textarea {
   width: 100%;
   margin: 0 auto;
   padding: 24px;
+  transition: background-color 0.25s ease;
 }
 
 /* Responsive 2-Column Grid for Create Bill Form on Desktop */
@@ -660,6 +779,29 @@ button, input, select, textarea {
 
 .form-card:hover {
   box-shadow: var(--shadow-hover);
+}
+
+/* A thin coloured rule along the top edge of every card, tinted by the
+   page accent. Cheap way to make the screens feel designed rather than
+   default: one gradient strip, no extra markup. */
+.form-card,
+.directory-table-card,
+.profile-section-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.form-card::before,
+.directory-table-card::before,
+.profile-section-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent, #2563eb), var(--accent-soft, #60a5fa));
+  opacity: 0.9;
 }
 
 .card-title-row {
@@ -1525,6 +1667,9 @@ button, input, select, textarea {
   flex-wrap: wrap;
 }
 
+/* Each tile carries a faint wash of its own colour with a matching left
+   edge, so a row of numbers is readable at a glance instead of being three
+   identical white boxes. */
 .stat-tile {
   flex: 1;
   min-width: 110px;
@@ -1532,7 +1677,15 @@ button, input, select, textarea {
   padding: 14px;
   border-radius: 10px;
   border: 1px solid var(--border-light);
+  border-left: 3px solid var(--stat-hue, var(--accent, #2563eb));
+  background-image: linear-gradient(135deg, var(--stat-wash, transparent), transparent 70%);
   text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
 }
 
 .stat-value {
@@ -1541,9 +1694,11 @@ button, input, select, textarea {
   line-height: 1.2;
 }
 
-.stat-value.success { color: var(--success-ink); }
-.stat-value.primary { color: var(--primary-ink); }
-.stat-value.warning { color: var(--warning-ink); }
+.stat-value.success { color: var(--success-ink); --stat-hue: var(--accent-teal); --stat-wash: rgba(13, 148, 136, 0.10); }
+.stat-value.primary { color: var(--primary-ink); --stat-hue: var(--accent-primary, #2563eb); --stat-wash: rgba(37, 99, 235, 0.10); }
+.stat-value.warning { color: var(--warning-ink); --stat-hue: var(--accent-amber); --stat-wash: rgba(217, 119, 6, 0.12); }
+.stat-value.purple { color: var(--accent-purple-ink); --stat-hue: var(--accent-purple); --stat-wash: rgba(124, 58, 237, 0.10); }
+.stat-value.rose { color: var(--accent-rose-ink); --stat-hue: var(--accent-rose); --stat-wash: rgba(225, 29, 72, 0.10); }
 
 .stat-caption {
   font-size: 11.5px;
@@ -2231,6 +2386,96 @@ button, input, select, textarea {
   padding: 22px 24px;
   box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
   margin-bottom: 22px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.profile-section-card:hover {
+  box-shadow: var(--shadow-hover);
+  border-color: var(--accent-border, var(--border-light));
+}
+
+/* Each Profile section owns its hue. Previously every card carried the same
+   blue top strip, so the five panels read as one undifferentiated block.
+   Setting --accent on the card lets the strip, the icon bubble and the
+   heading tint all derive from one value. */
+.profile-section-card.tone-green {
+  --accent: var(--accent-teal);
+  --accent-ink: var(--accent-teal-ink);
+  --accent-tint: var(--accent-teal-tint);
+  --accent-border: var(--accent-teal-border);
+  --accent-soft: #2dd4bf;
+}
+
+.profile-section-card.tone-blue {
+  --accent: var(--accent-primary, #2563eb);
+  --accent-ink: var(--accent-primary-ink, #1e40af);
+  --accent-tint: var(--primary-light);
+  --accent-border: #bfdbfe;
+  --accent-soft: var(--primary-soft);
+}
+
+.profile-section-card.tone-purple {
+  --accent: var(--accent-purple);
+  --accent-ink: var(--accent-purple-ink);
+  --accent-tint: var(--accent-purple-tint);
+  --accent-border: var(--accent-purple-border);
+  --accent-soft: var(--purple-soft);
+}
+
+.profile-section-card.tone-amber {
+  --accent: var(--accent-amber);
+  --accent-ink: var(--accent-amber-ink);
+  --accent-tint: var(--accent-amber-tint);
+  --accent-border: var(--accent-amber-border);
+  --accent-soft: var(--warning-strong);
+}
+
+.profile-section-card.tone-teal {
+  --accent: var(--accent-teal);
+  --accent-ink: var(--accent-teal-ink);
+  --accent-tint: var(--accent-teal-tint);
+  --accent-border: var(--accent-teal-border);
+  --accent-soft: #2dd4bf;
+}
+
+[data-theme='dark'] .profile-section-card.tone-green {
+  --accent-ink: #5eead4;
+  --accent-tint: rgba(13, 148, 136, 0.18);
+  --accent-border: rgba(45, 212, 191, 0.35);
+}
+
+[data-theme='dark'] .profile-section-card.tone-blue {
+  --accent-ink: var(--primary-soft-text);
+  --accent-tint: rgba(37, 99, 235, 0.16);
+  --accent-border: rgba(96, 165, 250, 0.35);
+}
+
+[data-theme='dark'] .profile-section-card.tone-purple {
+  --accent-ink: #c4b5fd;
+  --accent-tint: rgba(124, 58, 237, 0.18);
+  --accent-border: rgba(167, 139, 250, 0.35);
+}
+
+[data-theme='dark'] .profile-section-card.tone-amber {
+  --accent-ink: var(--warning-strong);
+  --accent-tint: rgba(217, 119, 6, 0.18);
+  --accent-border: rgba(251, 191, 36, 0.35);
+}
+
+[data-theme='dark'] .profile-section-card.tone-teal {
+  --accent-ink: #5eead4;
+  --accent-tint: rgba(13, 148, 136, 0.18);
+  --accent-border: rgba(45, 212, 191, 0.35);
+}
+
+/* The heading picks up its card's hue so the strip, the bubble and the
+   title agree. */
+.profile-section-card .card-heading-group h3 {
+  color: var(--text-main);
+}
+
+.profile-section-card .profile-form-label {
+  color: var(--accent-ink);
 }
 
 .card-heading-group {
@@ -2267,8 +2512,8 @@ button, input, select, textarea {
 }
 
 .card-icon-bubble.green {
-  background: var(--success-light);
-  border: 1px solid var(--success-border);
+  background: var(--accent-teal-tint);
+  border: 1px solid var(--accent-teal-border);
 }
 
 .card-icon-bubble.blue {
@@ -2284,6 +2529,28 @@ button, input, select, textarea {
 .card-icon-bubble.amber {
   background: var(--warning-light);
   border: 1px solid var(--warning-border);
+}
+
+/* Dark mode: the pale tints above are near-invisible on a dark card, so
+   swap each bubble for a translucent version of the same hue. */
+[data-theme='dark'] .card-icon-bubble.green {
+  background: rgba(13, 148, 136, 0.18);
+  border-color: rgba(45, 212, 191, 0.35);
+}
+
+[data-theme='dark'] .card-icon-bubble.blue {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+[data-theme='dark'] .card-icon-bubble.purple {
+  background: rgba(124, 58, 237, 0.20);
+  border-color: rgba(167, 139, 250, 0.35);
+}
+
+[data-theme='dark'] .card-icon-bubble.amber {
+  background: rgba(217, 119, 6, 0.20);
+  border-color: rgba(251, 191, 36, 0.35);
 }
 
 .profile-alert {
@@ -2454,8 +2721,8 @@ button, input, select, textarea {
 }
 
 .tally-status-panel {
-  background: var(--bg-app);
-  border: 1px solid var(--border-light);
+  background: var(--accent-tint);
+  border: 1px solid var(--accent-border);
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 12px;
@@ -4930,6 +5197,15 @@ button, input, select, textarea {
    Applied by setting data-theme="dark" on <html>. Toggled from the top bar
    and remembered in localStorage; falls back to the OS preference.
    ========================================================================== */
+
+/* The page wash is layered on .app-container, which sits outside the token
+   cascade in dark mode, so the gradients need their own dark values. */
+[data-theme='dark'] .app-container {
+  background-image:
+    radial-gradient(1100px 520px at 8% -8%, rgba(99, 102, 241, 0.20), transparent 62%),
+    radial-gradient(1000px 500px at 96% 2%, rgba(13, 148, 136, 0.16), transparent 60%),
+    radial-gradient(900px 620px at 50% 108%, rgba(217, 119, 6, 0.11), transparent 65%);
+}
 
 [data-theme='dark'] {
   color-scheme: dark;
