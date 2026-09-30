@@ -1,15 +1,21 @@
 import express from 'express';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const PARTIES_FILE = path.join(DATA_DIR, 'parties.json');
-const ITEMS_FILE = path.join(DATA_DIR, 'items.json');
-const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
-const INVOICES_FILE = path.join(DATA_DIR, 'invoices.json');
+import {
+  getParties,
+  saveParties,
+  getItems,
+  saveItems,
+  getSettings,
+  saveSettings,
+  raiseSeqTo,
+  getSeqState,
+  recordTallyReading
+} from '../lib/db.js';
+import {
+  fetchDebtorsXml,
+  fetchStockItemsXml,
+  fetchMaxVoucherNumber,
+  tallyOptionsFromSettings
+} from '../lib/tallyClient.js';
 
 const router = express.Router();
 
@@ -25,19 +31,6 @@ const GST_STATE_MAP = {
   '33': 'Tamil Nadu', '34': 'Puducherry', '35': 'Andaman & Nicobar', '36': 'Telangana',
   '37': 'Andhra Pradesh', '38': 'Ladakh'
 };
-
-async function readJson(file, fallback = []) {
-  try {
-    const raw = await fs.readFile(file, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return fallback;
-  }
-}
-
-async function writeJson(file, data) {
-  await fs.writeFile(file, JSON.stringify(data, null, 2), 'utf8');
-}
 
 // Helper: Parse XML for Sundry Debtors and Stock Items
 function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
@@ -268,7 +261,7 @@ function parseTallyMastersXml(xml, currentParties = [], currentItems = []) {
 // Parties / Customers
 router.get('/parties', async (req, res) => {
   try {
-    const parties = await readJson(PARTIES_FILE, []);
+    const parties = await getParties();
     res.json(parties);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -287,7 +280,7 @@ router.post('/items/clear', async (req, res) => {
 
 router.post('/parties', async (req, res) => {
   try {
-    const parties = await readJson(PARTIES_FILE, []);
+    const parties = await getParties();
     const name = (req.body.name || '').trim();
     if (!name) {
       return res.status(400).json({ error: 'Customer / Party name is required' });
@@ -309,7 +302,7 @@ router.post('/parties', async (req, res) => {
         gstin,
         pan: req.body.pan || (gstin ? gstin.slice(2, 12) : parties[existingIdx].pan)
       };
-      await writeJson(PARTIES_FILE, parties);
+      await saveParties(parties);
       return res.status(200).json(parties[existingIdx]);
     }
 
@@ -331,7 +324,7 @@ router.post('/parties', async (req, res) => {
       source: 'User Created'
     };
     parties.push(newParty);
-    await writeJson(PARTIES_FILE, parties);
+    await saveParties(parties);
     res.status(201).json(newParty);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -341,7 +334,7 @@ router.post('/parties', async (req, res) => {
 // Items / Products
 router.get('/items', async (req, res) => {
   try {
-    const items = await readJson(ITEMS_FILE, []);
+    const items = await getItems();
     res.json(items);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -350,7 +343,7 @@ router.get('/items', async (req, res) => {
 
 router.post('/items', async (req, res) => {
   try {
-    const items = await readJson(ITEMS_FILE, []);
+    const items = await getItems();
     const name = (req.body.name || '').trim();
     if (!name) {
       return res.status(400).json({ error: 'Product name is required' });
@@ -369,7 +362,7 @@ router.post('/items', async (req, res) => {
         stockQty: Number(req.body.stockQty !== undefined ? req.body.stockQty : items[existingIdx].stockQty || 0),
         category: req.body.category || items[existingIdx].category || 'General'
       };
-      await writeJson(ITEMS_FILE, items);
+      await saveItems(items);
       return res.status(200).json(items[existingIdx]);
     }
 
@@ -386,7 +379,7 @@ router.post('/items', async (req, res) => {
       source: 'User Created'
     };
     items.push(newItem);
-    await writeJson(ITEMS_FILE, items);
+    await saveItems(items);
     res.status(201).json(newItem);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -394,10 +387,24 @@ router.post('/items', async (req, res) => {
 });
 
 // Settings
+// Never ship credentials to the browser. Bank details and e-Way Bill secrets
+// are stripped out; the full record stays server-side.
+function redactSettings(settings) {
+  const { ewayBill, ...rest } = settings || {};
+  const safeEway = ewayBill
+    ? Object.fromEntries(
+        Object.entries(ewayBill).map(([k, v]) => [
+          k,
+          /password|secret|token|key/i.test(k) ? (v ? '********' : '') : v
+        ])
+      )
+    : undefined;
+  return { ...rest, ewayBill: safeEway };
+}
+
 router.get('/settings', async (req, res) => {
   try {
-    const settings = await readJson(SETTINGS_FILE, {});
-    res.json(settings);
+    res.json(redactSettings(await getSettings()));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -405,7 +412,7 @@ router.get('/settings', async (req, res) => {
 
 router.put('/settings', async (req, res) => {
   try {
-    const current = await readJson(SETTINGS_FILE, {});
+    const current = await getSettings();
     const updated = {
       ...current,
       ...req.body,
@@ -413,309 +420,183 @@ router.put('/settings', async (req, res) => {
       tally: { ...(current.tally || {}), ...(req.body.tally || {}) },
       ewayBill: { ...(current.ewayBill || {}), ...(req.body.ewayBill || {}) }
     };
-    await writeJson(SETTINGS_FILE, updated);
-    res.json(updated);
+    await saveSettings(updated);
+    res.json(redactSettings(updated));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 1. Fetch Live Masters Directly From Tally (Port 9000)
-// ONLY pulls Sundry Debtors (Customers) and Stock Items
-router.post('/masters/fetch-from-tally', async (req, res) => {
-  try {
-    const settings = await readJson(SETTINGS_FILE, {});
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
+// ---------------------------------------------------------------------------
+// Shared: merge Tally master XML and align the bill-number counter
+// ---------------------------------------------------------------------------
 
-    // Fetch Only Sundry Debtors
-    const debtorRequestXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>DebtorCollection</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <COLLECTION NAME="DebtorCollection">
-            <TYPE>Ledger</TYPE>
-            <CHILDOF>$$GroupSundryDebtors</CHILDOF>
-            <BELONGSTO>Yes</BELONGSTO>
-            <FETCH>NAME, PARENT, PARTYGSTIN, STATENAME, LEDSTATENAME, ADDRESS.LIST, ADDRESS, PINCODE, LEDGERPHONE, LEDGERMOBILE</FETCH>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
+/** Apply parsed masters, but never let a bad parse wipe existing data. */
+async function applyMasters(result, currentParties, currentItems) {
+  const finalParties = result.parties?.length ? result.parties : currentParties;
+  const finalItems = result.items?.length ? result.items : currentItems;
+  await saveParties(finalParties);
+  await saveItems(finalItems);
+  return { finalParties, finalItems };
+}
 
-    // Fetch Only Stock Items
-    const stockRequestXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>StockCollection</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <COLLECTION NAME="StockCollection">
-            <TYPE>StockItem</TYPE>
-            <FETCH>NAME, BASEUNITS, RATE, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS, STANDARDPRICE, STANDARDCOST, LASTSALERATE, PARENT, CATEGORY, DESCRIPTION, PARTNO, CLOSINGBALANCE, OPENINGBALANCE, GSTRATE, INTEGRATEDTAX, MAILINGNAME</FETCH>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
-
-    // Fetch Vouchers to identify latest voucher number in Tally
-    const voucherRequestXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>SalesVoucherCollection</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-        <SVFROMDATE>20000101</SVFROMDATE>
-        <SVTODATE>20991231</SVTODATE>
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <COLLECTION NAME="SalesVoucherCollection">
-            <TYPE>Voucher</TYPE>
-            <FETCH>VOUCHERNUMBER, DATE, PARTYLEDGERNAME</FETCH>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
-
-    const currentParties = await readJson(PARTIES_FILE, []);
-    const currentItems = await readJson(ITEMS_FILE, []);
-
-    let debtorXml = '';
-    let stockXml = '';
-    let voucherXml = '';
-
-    // Request Debtors
-    try {
-      const dRes = await fetch(`http://${host}:${port}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-        body: debtorRequestXml,
-        signal: AbortSignal.timeout(6000)
-      });
-      if (dRes.ok) {
-        debtorXml = await dRes.text();
-      }
-    } catch (dErr) {
-      console.warn('Debtor fetch warning:', dErr.message);
+/**
+ * Align numbering with a voucher number reported by Tally.
+ * raiseSeqTo only ever moves the counter forward, so a stale or wrong reading
+ * can never rewind numbering into territory Tally has already used.
+ */
+async function alignSequenceToTally(voucherNumbers) {
+  let maxTallyNum = 0;
+  for (const v of voucherNumbers || []) {
+    const m = String(v).match(/(\d+)$/);
+    if (m) {
+      const n = parseInt(m[1], 10);
+      if (!Number.isNaN(n) && n > maxTallyNum) maxTallyNum = n;
     }
-
-    // Request Stock Items
-    try {
-      const sRes = await fetch(`http://${host}:${port}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-        body: stockRequestXml,
-        signal: AbortSignal.timeout(6000)
-      });
-      if (sRes.ok) {
-        stockXml = await sRes.text();
-      }
-    } catch (sErr) {
-      console.warn('Stock fetch warning:', sErr.message);
-    }
-
-    // Request Vouchers to identify latest voucher sequence automatically
-    try {
-      const vRes = await fetch(`http://${host}:${port}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-        body: voucherRequestXml,
-        signal: AbortSignal.timeout(6000)
-      });
-      if (vRes.ok) {
-        voucherXml = await vRes.text();
-      }
-    } catch (vErr) {
-      console.warn('Voucher fetch warning:', vErr.message);
-    }
-
-    if (!debtorXml && !stockXml && !voucherXml) {
-      throw new Error(`Tally Prime is offline on http://${host}:${port}. Please verify Tally is open.`);
-    }
-
-    const combinedXml = debtorXml + '\n' + stockXml;
-    const result = parseTallyMastersXml(combinedXml, currentParties, currentItems);
-
-    const finalParties = result.parties && result.parties.length > 0 ? result.parties : currentParties;
-    const finalItems = result.items && result.items.length > 0 ? result.items : currentItems;
-
-    await writeJson(PARTIES_FILE, finalParties);
-    await writeJson(ITEMS_FILE, finalItems);
-
-    // Auto-identify latest voucher from Tally and sync sequence
-    let maxTallyNum = 0;
-    if (voucherXml) {
-      const vchMatches = voucherXml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi);
-      for (const m of vchMatches) {
-        const numMatch = m[1].match(/(\d+)$/);
-        if (numMatch) {
-          const n = parseInt(numMatch[1], 10);
-          if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
-        }
-      }
-      if (maxTallyNum > 0) {
-        const settings = await readJson(SETTINGS_FILE, {});
-        const invoices = await readJson(INVOICES_FILE, []);
-        let maxInvoiceNum = 0;
-        for (const inv of invoices) {
-          const nm = String(inv.invoiceNo || '').match(/(\d+)$/);
-          if (nm) {
-            const n = parseInt(nm[1], 10);
-            if (!isNaN(n) && n > maxInvoiceNum) maxInvoiceNum = n;
-          }
-        }
-        const currentNext = Number(settings.nextInvoiceNumber) || 1;
-        const targetNext = Math.max(maxInvoiceNum, maxTallyNum) + 1;
-        if (targetNext > currentNext) {
-          settings.nextInvoiceNumber = targetNext;
-          await writeJson(SETTINGS_FILE, settings);
-        }
-      }
-    }
-
-    res.json({
-      success: true,
-      message: `Fetched ${result.newPartiesCount + result.updatedPartiesCount} customers and ${result.newItemsCount + result.updatedItemsCount} stock items from Tally Prime!`,
-      totalParties: finalParties.length,
-      totalItems: finalItems.length,
-      parties: finalParties,
-      items: finalItems,
-      latestTallyVoucher: maxTallyNum > 0 ? maxTallyNum : undefined,
-      nextInvoiceNumber: maxTallyNum > 0 ? maxTallyNum + 1 : undefined
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
   }
+  if (maxTallyNum <= 0) return { latestTallyVoucher: 0, nextInvoiceNumber: null };
+
+  const state = await raiseSeqTo(maxTallyNum + 1, 'tally-master-push');
+  return { latestTallyVoucher: maxTallyNum, nextInvoiceNumber: state.nextValue };
+}
+
+// ---------------------------------------------------------------------------
+// 1. Fetch masters straight from a reachable Tally (local PC / same network)
+// ---------------------------------------------------------------------------
+
+router.post('/masters/fetch-from-tally', async (req, res) => {
+  const tallyOpts = tallyOptionsFromSettings(await getSettings());
+  const currentParties = await getParties();
+  const currentItems = await getItems();
+
+  const [debtors, stock, vouchers] = await Promise.allSettled([
+    fetchDebtorsXml(tallyOpts),
+    fetchStockItemsXml(tallyOpts),
+    fetchMaxVoucherNumber(tallyOpts)
+  ]);
+
+  const failures = [debtors, stock, vouchers].filter((r) => r.status === 'rejected');
+  if (failures.length === 3) {
+    return res.status(503).json({
+      success: false,
+      error: `Tally Prime is not reachable on http://${tallyOpts.host}:${tallyOpts.port}. Open Tally and enable the HTTP server (F1 > Settings > Connectivity > Enable).`,
+      detail: failures[0].reason?.message
+    });
+  }
+
+  const debtorXml = debtors.status === 'fulfilled' ? debtors.value : '';
+  const stockXml = stock.status === 'fulfilled' ? stock.value : '';
+  const voucherNumbers = vouchers.status === 'fulfilled' ? vouchers.value.numbers : [];
+
+  const result = parseTallyMastersXml(`${debtorXml}\n${stockXml}`, currentParties, currentItems);
+  const { finalParties, finalItems } = await applyMasters(result, currentParties, currentItems);
+  const seq = await alignSequenceToTally(voucherNumbers);
+
+  res.json({
+    success: true,
+    message: `Fetched ${result.newPartiesCount + result.updatedPartiesCount} customers and ${result.newItemsCount + result.updatedItemsCount} stock items from Tally Prime.`,
+    totalParties: finalParties.length,
+    totalItems: finalItems.length,
+    parties: finalParties,
+    items: finalItems,
+    latestTallyVoucher: seq.latestTallyVoucher || undefined,
+    nextInvoiceNumber: seq.nextInvoiceNumber || undefined,
+    warnings: failures.map((f) => f.reason?.message).filter(Boolean)
+  });
 });
 
-// 2. Inbound Endpoint for Tally TDL Outbound Push
-// When accountant presses "Push Masters" in Tally, Tally POSTs to this endpoint!
+// ---------------------------------------------------------------------------
+// 2. Inbound push from the local bridge agent / Tally masters export
+//    This is the path that works from the cloud, because the agent runs on the
+//    PC that has Tally open and uploads from there.
+// ---------------------------------------------------------------------------
+
+function extractXmlFromBody(body) {
+  if (typeof body === 'string') return body;
+  if (Buffer.isBuffer(body)) return body.toString('utf8');
+  if (body && typeof body.xml === 'string') return body.xml;
+  if (body && typeof body === 'object') return JSON.stringify(body);
+  return '';
+}
+
 router.post('/masters/tally-push', async (req, res) => {
   try {
-    let xml = '';
-    if (typeof req.body === 'string') {
-      xml = req.body;
-    } else if (Buffer.isBuffer(req.body)) {
-      xml = req.body.toString('utf8');
-    } else if (req.body && typeof req.body.xml === 'string') {
-      xml = req.body.xml;
-    } else if (req.body && typeof req.body === 'object') {
-      xml = JSON.stringify(req.body);
+    const xml = extractXmlFromBody(req.body);
+    if (!xml.trim()) {
+      return res.status(400).json({ success: false, error: 'No XML content provided' });
     }
 
-    const currentParties = await readJson(PARTIES_FILE, []);
-    const currentItems = await readJson(ITEMS_FILE, []);
+    const currentParties = await getParties();
+    const currentItems = await getItems();
 
     const result = parseTallyMastersXml(xml, currentParties, currentItems);
+    const { finalParties, finalItems } = await applyMasters(result, currentParties, currentItems);
 
-    // Safeguard: Never overwrite with empty array if existing data was present!
-    const finalParties = result.parties && result.parties.length > 0 ? result.parties : currentParties;
-    const finalItems = result.items && result.items.length > 0 ? result.items : currentItems;
-
-    await writeJson(PARTIES_FILE, finalParties);
-    await writeJson(ITEMS_FILE, finalItems);
-
-    // Detect if Tally XML contains vouchers to auto-align nextInvoiceNumber
-    let maxTallyNum = 0;
-    let updatedNextNumber = undefined;
-    if (xml.includes('SalesVoucherCollection') || xml.includes('<VOUCHERNUMBER')) {
-      const vchMatches = [...xml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi)];
-      for (const m of vchMatches) {
-        const numMatch = m[1].match(/(\d+)$/);
-        if (numMatch) {
-          const n = parseInt(numMatch[1], 10);
-          if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
-        }
-      }
-
-      const settings = await readJson(SETTINGS_FILE, {});
-      const invoices = await readJson(INVOICES_FILE, []);
-      let maxInvoiceNum = 0;
-      for (const inv of invoices) {
-        const nm = String(inv.invoiceNo || '').match(/(\d+)$/);
-        if (nm) {
-          const n = parseInt(nm[1], 10);
-          if (!isNaN(n) && n > maxInvoiceNum) maxInvoiceNum = n;
-        }
-      }
-
-      const currentNext = Number(settings.nextInvoiceNumber) || 1;
-      const targetNext = Math.max(maxInvoiceNum, maxTallyNum) + 1;
-      if (targetNext > currentNext) {
-        settings.nextInvoiceNumber = targetNext;
-        await writeJson(SETTINGS_FILE, settings);
-      }
-      updatedNextNumber = settings.nextInvoiceNumber || targetNext;
+    let seq = { latestTallyVoucher: 0, nextInvoiceNumber: null };
+    if (xml.includes('<VOUCHERNUMBER')) {
+      const numbers = [...xml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi)].map((m) => m[1].trim());
+      seq = await alignSequenceToTally(numbers);
     }
 
     res.json({
       success: true,
-      message: `Tally Masters synchronized! (${result.newPartiesCount + result.updatedPartiesCount} debtors, ${result.newItemsCount + result.updatedItemsCount} items)`,
+      message: `Tally Masters synchronized (${result.newPartiesCount + result.updatedPartiesCount} debtors, ${result.newItemsCount + result.updatedItemsCount} items).`,
       partiesCount: finalParties.length,
       itemsCount: finalItems.length,
-      latestTallyVoucher: maxTallyNum > 0 ? maxTallyNum : undefined,
-      nextInvoiceNumber: updatedNextNumber
+      latestTallyVoucher: seq.latestTallyVoucher || undefined,
+      nextInvoiceNumber: seq.nextInvoiceNumber || undefined
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 3. Import Tally Masters XML manually
+/**
+ * 2b. Numbering heartbeat.
+ * The local agent reports Tally's highest voucher number so the portal can keep
+ * the next bill number ahead of Tally even though the cloud cannot see Tally
+ * directly. This is what makes "last bill in Tally was 250" show up live.
+ */
+router.post('/masters/tally-reading', async (req, res) => {
+  try {
+    const { maxVoucher, voucherCount, company } = req.body || {};
+    const max = Number(maxVoucher || 0);
+    if (!Number.isFinite(max) || max < 0) {
+      return res.status(400).json({ success: false, error: 'maxVoucher must be a non-negative number' });
+    }
+    await recordTallyReading(max, company || '');
+    const seq = max > 0 ? await raiseSeqTo(max + 1, 'tally-reading') : await getSeqState();
+    res.json({
+      success: true,
+      latestTallyVoucher: max,
+      voucherCount: Number(voucherCount || 0),
+      nextInvoiceNumber: seq.nextValue
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 3. Manual XML import (paste / file upload)
+// ---------------------------------------------------------------------------
+
 router.post('/masters/import-tally-xml', async (req, res) => {
   try {
-    const xml = typeof req.body === 'string' ? req.body : (req.body.xml || '');
+    const xml = typeof req.body === 'string' ? req.body : req.body?.xml || '';
     if (!xml || !xml.trim()) {
       return res.status(400).json({ success: false, error: 'No XML content provided' });
     }
 
-    const currentParties = await readJson(PARTIES_FILE, []);
-    const currentItems = await readJson(ITEMS_FILE, []);
+    const currentParties = await getParties();
+    const currentItems = await getItems();
 
     const result = parseTallyMastersXml(xml, currentParties, currentItems);
-
-    const finalParties = result.parties && result.parties.length > 0 ? result.parties : currentParties;
-    const finalItems = result.items && result.items.length > 0 ? result.items : currentItems;
-
-    await writeJson(PARTIES_FILE, finalParties);
-    await writeJson(ITEMS_FILE, finalItems);
+    const { finalParties, finalItems } = await applyMasters(result, currentParties, currentItems);
 
     res.json({
       success: true,
-      message: `Tally XML parsed successfully! (${result.newPartiesCount} new debtors, ${result.newItemsCount} new items)`,
+      message: `Tally XML parsed (${result.newPartiesCount} new debtors, ${result.newItemsCount} new items).`,
       totalParties: finalParties.length,
       totalItems: finalItems.length,
       parties: finalParties,

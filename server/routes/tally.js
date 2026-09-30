@@ -3,197 +3,170 @@ import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { buildTallyEnvelopeXml, buildVoucherXml, buildMastersXml } from '../lib/tallyXmlBuilder.js';
+import { getInvoices, getInvoice, updateInvoice, getSettings, getBridgeState } from '../lib/db.js';
+import {
+  postXml,
+  probe,
+  getActiveCompany,
+  fetchMaxVoucherNumber,
+  mastersImportEnvelope,
+  voucherImportEnvelope,
+  parseImportResponse,
+  tallyOptionsFromSettings
+} from '../lib/tallyClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const INVOICES_FILE = path.join(DATA_DIR, 'invoices.json');
-const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 const router = express.Router();
 
-async function readInvoices() {
-  try {
-    const raw = await fs.readFile(INVOICES_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
+const BRIDGE_STALE_MS = 90 * 1000;
+
+/**
+ * The portal normally runs on a cloud host and cannot see the accountant's
+ * localhost:9000. Tally is reached either directly (local installs) or through
+ * the bridge agent running on the PC that has Tally open.
+ */
+async function tallyContext() {
+  const settings = await getSettings();
+  const opts = tallyOptionsFromSettings(settings);
+  const reach = await probe(opts);
+  const bridge = await getBridgeState();
+  const bridgeOnline = Boolean(
+    bridge?.lastHeartbeat && Date.now() - new Date(bridge.lastHeartbeat).getTime() < BRIDGE_STALE_MS
+  );
+  return {
+    settings,
+    opts,
+    reach,
+    bridge,
+    bridgeOnline,
+    company: reach.company || bridge?.tallyCompany || settings?.tally?.companyName || 'Sanmati Solution',
+    canPush: reach.reachable
+  };
 }
 
-async function writeInvoices(data) {
-  await fs.writeFile(INVOICES_FILE, JSON.stringify(data, null, 2), 'utf8');
-}
-
-async function readSettings() {
-  try {
-    const raw = await fs.readFile(SETTINGS_FILE, 'utf8');
-    return JSON.parse(raw);
-  } catch {
-    return {
-      tally: { host: 'localhost', port: 9000, companyName: 'Yamuna Plastics Pvt. Ltd.' }
-    };
-  }
+/** Ensure the ledger and stock item exist in Tally before the voucher. */
+async function ensureMasters(invoice, company) {
+  const settings = await getSettings();
+  const withCompany = { ...settings, tally: { ...settings.tally, companyName: company } };
+  await postXml(mastersImportEnvelope(buildMastersXml([invoice], withCompany), company), {
+    timeoutMs: 10000
+  });
+  // Tally needs a moment to index new masters before a voucher can reference them.
+  await new Promise((r) => setTimeout(r, 400));
 }
 
 /**
- * Helper to post XML directly to Tally's HTTP port (usually 9000)
+ * Create one voucher in Tally, refusing to duplicate a number that is already
+ * there. Tally only blocks duplicates when its own prevent-duplicates setting is
+ * enabled, so we verify ourselves first.
  */
-async function postXmlToTally(xmlString, host = 'localhost', port = 9000) {
-  const url = `http://${host}:${port}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/xml; charset=utf-8',
-      'Content-Length': Buffer.byteLength(xmlString).toString()
-    },
-    body: xmlString,
-    // 5 seconds timeout
-    signal: AbortSignal.timeout(5000)
-  });
-
-  if (!response.ok) {
-    throw new Error(`Tally HTTP Server returned status ${response.status}: ${response.statusText}`);
+async function pushVoucher(invoice, { opts, company }) {
+  const { numbers } = await fetchMaxVoucherNumber(opts);
+  if (numbers.includes(invoice.invoiceNo)) {
+    const err = new Error(
+      `Tally already holds a Sales voucher numbered ${invoice.invoiceNo}. Not creating a duplicate.`
+    );
+    err.code = 'DUPLICATE_IN_TALLY';
+    throw err;
   }
 
-  const responseText = await response.text();
-  return responseText;
+  await ensureMasters(invoice, company);
+
+  const settings = await getSettings();
+  const withCompany = { ...settings, tally: { ...settings.tally, companyName: company } };
+  const responseText = await postXml(
+    voucherImportEnvelope(buildVoucherXml(invoice, withCompany), company),
+    { ...opts, timeoutMs: 10000 }
+  );
+  return { responseText, ...parseImportResponse(responseText) };
 }
 
-// Helper to detect open company in Tally
-export async function getActiveTallyCompany(host = 'localhost', port = 9000) {
-  try {
-    const pingXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>Company</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-      </STATICVARIABLES>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
-    const tallyResp = await postXmlToTally(pingXml, host, port);
-    const m = tallyResp.match(/<COMPANY NAME="([^"]+)"/i) || tallyResp.match(/<NAME TYPE="String">([^<]+)<\/NAME>/i);
-    if (m && m[1]) return m[1].replace(/&amp;/g, '&');
-  } catch {}
-  return null;
-}
+// ---------------------------------------------------------------------------
+// 1. Status
+// ---------------------------------------------------------------------------
 
-// 1. Check Tally Prime Connection Status
 router.get('/status', async (req, res) => {
-  const settings = await readSettings();
-  const host = settings.tally?.host || 'localhost';
-  const port = settings.tally?.port || 9000;
-
   try {
-    const activeCompany = await getActiveTallyCompany(host, port);
-    if (activeCompany) {
-      const company = activeCompany;
-      res.json({
-        online: true,
-        host,
-        port,
-        configuredCompany: company,
-        activeCompany,
-        message: `Tally Prime Server is ACTIVE and responding. Connected to active company "${company}".`
-      });
-    } else {
-      res.json({
-        online: true,
-        host,
-        port,
-        configuredCompany: settings.tally?.companyName || 'Sanmati Solution',
-        message: 'Tally Prime Server is active and responding on Port 9000.'
-      });
-    }
-  } catch (err) {
+    const { opts, reach, bridge, bridgeOnline, company } = await tallyContext();
+    const canSync = reach.reachable || bridgeOnline;
+
     res.json({
-      online: false,
-      host,
-      port,
-      configuredCompany: settings.tally?.companyName || 'Sanmati Solution',
-      message: `Tally is offline or not listening on port ${port}. Please ensure Tally Prime is open with ODBC/HTTP Server enabled in F1: Settings -> Connectivity.`,
-      error: err.message
+      online: canSync,
+      tallyReachable: reach.reachable,
+      bridgeAgentOnline: bridgeOnline,
+      host: opts.host,
+      port: opts.port,
+      configuredCompany: (await getSettings()).tally?.companyName || 'Sanmati Solution',
+      activeCompany: company,
+      latencyMs: reach.latencyMs,
+      lastTallyReading: bridge?.lastSyncAt || null,
+      tallyMaxVoucher: bridge?.tallyMaxVoucher || 0,
+      message: reach.reachable
+        ? `Tally Prime is reachable on ${opts.host}:${opts.port} (company "${company}").`
+        : bridgeOnline
+          ? 'The portal cannot reach Tally directly, but the local bridge agent is online and will sync through it.'
+          : `Tally Prime is not reachable on ${opts.host}:${opts.port} and the bridge agent is offline. Open Tally, press F1 > Settings > Connectivity > tick "Enable", then start the bridge agent on that PC.`,
+      error: reach.reachable ? null : reach.error
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
-// 2. Export XML of All Pending (or all) Invoices
+// ---------------------------------------------------------------------------
+// 2. XML exports (pulled by the TDL over HTTP, so it passes ?key=BRIDGE_KEY)
+// ---------------------------------------------------------------------------
+
 router.get('/export-xml', async (req, res) => {
   try {
     const { all } = req.query;
-    const settings = await readSettings();
-    let invoices = await readInvoices();
+    const settings = await getSettings();
+    let invoices = await getInvoices();
 
     if (all !== 'true') {
-      // Default: only pending unsynced invoices
       const pending = invoices.filter((i) => !i.tallySync?.synced);
       if (pending.length > 0) invoices = pending;
     }
 
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
-    const detectedCompany = await getActiveTallyCompany(host, port);
-    const effectiveSettings = {
-      ...settings,
-      tally: {
-        ...settings.tally,
-        companyName: detectedCompany || settings.tally?.companyName || 'Sanmati Solution'
-      }
-    };
-
-    const xml = buildTallyEnvelopeXml(invoices, effectiveSettings, true);
+    const { company } = await tallyContext();
+    const effectiveSettings = { ...settings, tally: { ...settings.tally, companyName: company } };
 
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename="YamunaPlastics_Tally_Import_${Date.now()}.xml"`
     );
-    res.send(xml);
+    res.send(buildTallyEnvelopeXml(invoices, effectiveSettings, true));
   } catch (err) {
     res.status(500).send(`<!-- Error: ${err.message} -->`);
   }
 });
 
-// 3. Get single invoice XML
 router.get('/invoice-xml/:id', async (req, res) => {
   try {
-    const settings = await readSettings();
-    const invoices = await readInvoices();
-    const inv = invoices.find((i) => i.id === req.params.id || i.invoiceNo === req.params.id);
-
+    const inv = await getInvoice(req.params.id);
     if (!inv) return res.status(404).send('<!-- Invoice not found -->');
 
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
-    const detectedCompany = await getActiveTallyCompany(host, port);
-    const effectiveSettings = {
-      ...settings,
-      tally: {
-        ...settings.tally,
-        companyName: detectedCompany || settings.tally?.companyName || 'Sanmati Solution'
-      }
-    };
+    const settings = await getSettings();
+    const { company } = await tallyContext();
+    const effectiveSettings = { ...settings, tally: { ...settings.tally, companyName: company } };
 
-    const xml = buildTallyEnvelopeXml([inv], effectiveSettings, true);
     res.setHeader('Content-Type', 'application/xml; charset=utf-8');
-    res.send(xml);
+    res.send(buildTallyEnvelopeXml([inv], effectiveSettings, true));
   } catch (err) {
     res.status(500).send(`<!-- Error: ${err.message} -->`);
   }
 });
 
-// 4. Endpoint for TDL to pull list of pending bills as JSON or XML
+// ---------------------------------------------------------------------------
+// 3. Pending bills
+// ---------------------------------------------------------------------------
+
 router.get('/pending-bills', async (req, res) => {
   try {
-    const invoices = await readInvoices();
+    const invoices = await getInvoices();
     const pending = invoices.filter((i) => !i.tallySync?.synced);
     res.json({
       count: pending.length,
@@ -212,292 +185,171 @@ router.get('/pending-bills', async (req, res) => {
   }
 });
 
-// 5. Direct 1-Click Push to Tally Prime for a Single Invoice
+// ---------------------------------------------------------------------------
+// 4. Single push
+// ---------------------------------------------------------------------------
+
 router.post('/sync/:id', async (req, res) => {
   try {
-    const settings = await readSettings();
-    const invoices = await readInvoices();
-    const invIndex = invoices.findIndex(
-      (i) => i.id === req.params.id || i.invoiceNo === req.params.id
-    );
+    const invoice = await getInvoice(req.params.id);
+    if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
-    if (invIndex === -1) {
-      return res.status(404).json({ success: false, error: 'Invoice not found' });
-    }
-
-    const invoice = invoices[invIndex];
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
-
-    const detectedCompany = await getActiveTallyCompany(host, port);
-    const companyName = detectedCompany || settings.tally?.companyName || 'Sanmati Solution';
-    const customSettings = {
-      ...settings,
-      tally: {
-        ...settings.tally,
-        companyName
-      }
-    };
-
-    // Step 1: Ensure Masters exist in Tally first
-    try {
-      const mastersXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Import Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <IMPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>All Masters</REPORTNAME>
-        <STATICVARIABLES>
-          <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-      <REQUESTDATA>
-        ${buildMastersXml([invoice], customSettings)}
-      </REQUESTDATA>
-    </IMPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-      await postXmlToTally(mastersXml, host, port);
-      // Allow Tally Prime internal indexing to commit masters before posting voucher
-      await new Promise((r) => setTimeout(r, 400));
-    } catch (mErr) {
-      console.warn('Masters sync notice:', mErr.message);
-    }
-
-    // Step 2: Push Voucher
-    const voucherXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Import Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <IMPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>Vouchers</REPORTNAME>
-        <STATICVARIABLES>
-          <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-      <REQUESTDATA>
-        ${buildVoucherXml(invoice, customSettings)}
-      </REQUESTDATA>
-    </IMPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-
-    let tallyResponse = '';
-    let success = false;
-    let message = '';
-
-    try {
-      tallyResponse = await postXmlToTally(voucherXml, host, port);
-
-      const createdCount = Number((tallyResponse.match(/<CREATED>(\d+)<\/CREATED>/) || [])[1] || 0);
-      const alteredCount = Number((tallyResponse.match(/<ALTERED>(\d+)<\/ALTERED>/) || [])[1] || 0);
-      const errorsCount = Number((tallyResponse.match(/<ERRORS>(\d+)<\/ERRORS>/) || [])[1] || 0);
-
-      if ((createdCount > 0 || alteredCount > 0) && errorsCount === 0) {
-        success = true;
-        message = `Successfully entered Bill #${invoice.invoiceNo} into Tally Prime company "${companyName}".`;
-      } else if (tallyResponse.includes('<LINEERROR>')) {
-        const errorMatch = tallyResponse.match(/<LINEERROR>(.*?)<\/LINEERROR>/);
-        const errText = errorMatch ? errorMatch[1] : 'Tally validation error';
-        message = `Tally Rejected Voucher: ${errText}`;
-      } else {
-        success = !tallyResponse.includes('Error') && !tallyResponse.includes('Failed');
-        message = success
-          ? `Bill #${invoice.invoiceNo} entered into Tally.`
-          : 'Tally responded with an error.';
-      }
-    } catch (netErr) {
+    const ctx = await tallyContext();
+    if (!ctx.canPush) {
       return res.status(503).json({
         success: false,
-        error: `Could not connect to Tally Prime on ${host}:${port}. Please verify Tally Prime is running.`,
-        details: netErr.message
+        error: 'Tally is not reachable and no bridge agent is online, so this bill cannot be pushed yet. It stays in the pending list until one of them is up.'
       });
     }
 
-    if (success) {
-      invoice.tallySync = {
-        synced: true,
-        syncTime: new Date().toISOString(),
-        tallyVoucherNo: invoice.invoiceNo,
-        tallyCompany: companyName,
-        method: 'Direct HTTP Push'
-      };
-      try {
-        await queryAndPopulateEwayBill(invoice, companyName, host, port);
-      } catch (ewbErr) {
-        console.warn('Auto e-way bill identification notice:', ewbErr.message);
+    const { opts, company } = ctx;
+    let responseText = '';
+    let message = '';
+
+    try {
+      const result = await pushVoucher(invoice, { opts, company });
+      responseText = result.responseText;
+      if ((result.created > 0 || result.altered > 0) && result.errors === 0) {
+        message = `Bill #${invoice.invoiceNo} entered into Tally Prime company "${company}".`;
+      } else {
+        return res.status(422).json({
+          success: false,
+          invoiceNo: invoice.invoiceNo,
+          error: result.lineError || 'Tally rejected the voucher.',
+          tallyResponseSnippet: responseText.slice(0, 400)
+        });
       }
-      await writeInvoices(invoices);
+    } catch (err) {
+      if (err.code === 'DUPLICATE_IN_TALLY') {
+        return res.status(409).json({ success: false, code: err.code, error: err.message });
+      }
+      return res.status(503).json({ success: false, error: err.message });
     }
 
-    res.json({
-      success,
-      invoiceNo: invoice.invoiceNo,
-      company: companyName,
-      message,
-      tallyResponseSnippet: tallyResponse.slice(0, 400)
-    });
+    invoice.tallySync = {
+      synced: true,
+      syncTime: new Date().toISOString(),
+      tallyVoucherNo: invoice.invoiceNo,
+      tallyCompany: company,
+      method: 'Direct HTTP Push'
+    };
+    try {
+      await queryAndPopulateEwayBill(invoice, company, opts);
+    } catch (eErr) {
+      console.warn('Auto e-way bill lookup notice:', eErr.message);
+    }
+    await updateInvoice(invoice);
+
+    res.json({ success: true, invoiceNo: invoice.invoiceNo, company, message });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 6. Direct 1-Click Push of ALL Pending Invoices to Tally Prime
+// ---------------------------------------------------------------------------
+// 5. Bulk push
+// ---------------------------------------------------------------------------
+
 router.post('/sync-all', async (req, res) => {
   try {
-    const settings = await readSettings();
-    const invoices = await readInvoices();
-    const pendingInvoices = invoices.filter((i) => !i.tallySync?.synced);
+    const invoices = await getInvoices();
+    const pending = invoices.filter((i) => !i.tallySync?.synced);
 
-    if (pendingInvoices.length === 0) {
-      return res.json({
-        success: true,
-        syncedCount: 0,
-        message: 'No pending invoices to sync. All bills are up to date!'
+    if (pending.length === 0) {
+      return res.json({ success: true, syncedCount: 0, message: 'No pending bills. Everything is in sync.' });
+    }
+
+    const ctx = await tallyContext();
+    if (!ctx.canPush) {
+      return res.status(503).json({
+        success: false,
+        error: 'Tally is not reachable and no bridge agent is online. Bills stay pending until one is up.'
       });
     }
 
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
-    const detectedCompany = await getActiveTallyCompany(host, port);
-    const companyName = detectedCompany || settings.tally?.companyName || 'Sanmati Solution';
-    const customSettings = {
-      ...settings,
-      tally: {
-        ...settings.tally,
-        companyName
-      }
-    };
-
-    // Step 1: Ensure All Masters exist
-    try {
-      const mastersXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Import Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <IMPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>All Masters</REPORTNAME>
-        <STATICVARIABLES>
-          <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-      <REQUESTDATA>
-        ${buildMastersXml(pendingInvoices, customSettings)}
-      </REQUESTDATA>
-    </IMPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-      await postXmlToTally(mastersXml, host, port);
-      // Allow Tally Prime internal indexing to commit masters before posting vouchers
-      await new Promise((r) => setTimeout(r, 400));
-    } catch (mErr) {
-      console.warn('Masters sync notice:', mErr.message);
-    }
-
-    // Step 2: Push All Vouchers
+    const { opts, company } = ctx;
     let syncedCount = 0;
     const errors = [];
 
-    for (const inv of pendingInvoices) {
-      const voucherXml = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Import Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <IMPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>Vouchers</REPORTNAME>
-        <STATICVARIABLES>
-          <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-      <REQUESTDATA>
-        ${buildVoucherXml(inv, customSettings)}
-      </REQUESTDATA>
-    </IMPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-
+    for (const inv of pending) {
       try {
-        const resp = await postXmlToTally(voucherXml, host, port);
-        const createdCount = Number((resp.match(/<CREATED>(\d+)<\/CREATED>/) || [])[1] || 0);
-        const alteredCount = Number((resp.match(/<ALTERED>(\d+)<\/ALTERED>/) || [])[1] || 0);
-        const errorsCount = Number((resp.match(/<ERRORS>(\d+)<\/ERRORS>/) || [])[1] || 0);
-
-        if ((createdCount > 0 || alteredCount > 0) && errorsCount === 0) {
+        const result = await pushVoucher(inv, { opts, company });
+        if ((result.created > 0 || result.altered > 0) && result.errors === 0) {
           inv.tallySync = {
             synced: true,
             syncTime: new Date().toISOString(),
             tallyVoucherNo: inv.invoiceNo,
-            tallyCompany: companyName,
+            tallyCompany: company,
             method: 'Bulk Direct Push'
           };
           try {
-            await queryAndPopulateEwayBill(inv, companyName, host, port);
+            await queryAndPopulateEwayBill(inv, company, opts);
           } catch {}
+          await updateInvoice(inv);
           syncedCount++;
         } else {
-          const errMatch = resp.match(/<LINEERROR>(.*?)<\/LINEERROR>/);
-          errors.push(`${inv.invoiceNo}: ${errMatch ? errMatch[1] : 'Error'}`);
+          errors.push(`${inv.invoiceNo}: ${result.lineError || 'rejected by Tally'}`);
         }
-      } catch (e) {
-        errors.push(`${inv.invoiceNo}: ${e.message}`);
+      } catch (err) {
+        if (err.code === 'DUPLICATE_IN_TALLY') {
+          // Already in Tally under this number, so treat it as done and flag it.
+          inv.tallySync = {
+            ...(inv.tallySync || {}),
+            synced: true,
+            syncTime: new Date().toISOString(),
+            tallyVoucherNo: inv.invoiceNo,
+            method: 'Already present in Tally'
+          };
+          await updateInvoice(inv);
+          errors.push(`${inv.invoiceNo}: already exists in Tally, marked synced without creating a duplicate`);
+        } else {
+          errors.push(`${inv.invoiceNo}: ${err.message}`);
+        }
       }
     }
 
-    await writeInvoices(invoices);
-
     res.json({
-      success: syncedCount > 0,
+      success: syncedCount > 0 || errors.length === 0,
       syncedCount,
-      totalPending: pendingInvoices.length,
-      company: companyName,
-      errors: errors.length > 0 ? errors : undefined,
-      message: `Batch sync complete. Successfully entered ${syncedCount} of ${pendingInvoices.length} invoices into Tally Prime ("${companyName}").`
+      totalPending: pending.length,
+      company,
+      errors: errors.length ? errors : undefined,
+      message: `Pushed ${syncedCount} of ${pending.length} pending bills into Tally Prime ("${company}").`
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 7. Mark as Synced (Called by TDL client after TDL successfully pulls and imports)
+// ---------------------------------------------------------------------------
+// 6. Mark synced (called by the bridge agent after a successful local push)
+// ---------------------------------------------------------------------------
+
 router.post('/mark-synced/:id', async (req, res) => {
   try {
-    const { method, tallyVoucherNo } = req.body;
-    const invoices = await readInvoices();
-    const inv = invoices.find((i) => i.id === req.params.id || i.invoiceNo === req.params.id);
+    const invoice = await getInvoice(req.params.id);
+    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
 
-    if (!inv) return res.status(404).json({ error: 'Invoice not found' });
-
-    inv.tallySync = {
+    const { method, tallyVoucherNo } = req.body || {};
+    invoice.tallySync = {
+      ...(invoice.tallySync || {}),
       synced: true,
       syncTime: new Date().toISOString(),
-      tallyVoucherNo: tallyVoucherNo || inv.invoiceNo,
+      tallyVoucherNo: tallyVoucherNo || invoice.invoiceNo,
       method: method || 'TDL In-App Sync'
     };
-
-    await writeInvoices(invoices);
-    res.json({ success: true, invoice: inv });
+    await updateInvoice(invoice);
+    res.json({ success: true, invoice });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-/**
- * Auto queries Tally Prime for e-Way Bill & e-Invoice data,
- * stores it inside the invoice object, and returns the ewayBill record.
- */
-export async function queryAndPopulateEwayBill(invoice, companyName, host = 'localhost', port = 9000) {
+// ---------------------------------------------------------------------------
+// 7. e-Way Bill lookups
+// ---------------------------------------------------------------------------
+
+export async function queryAndPopulateEwayBill(invoice, companyName, opts = {}) {
   const queryXml = `<?xml version="1.0" encoding="utf-8"?>
 <ENVELOPE>
   <HEADER>
@@ -519,9 +371,9 @@ export async function queryAndPopulateEwayBill(invoice, companyName, host = 'loc
 
   let tallyResp = '';
   try {
-    tallyResp = await postXmlToTally(queryXml, host, port);
+    tallyResp = await postXml(queryXml, { ...opts, timeoutMs: 10000 });
   } catch (netErr) {
-    console.warn('Tally query notice:', netErr.message);
+    console.warn('Tally e-way bill query notice:', netErr.message);
   }
 
   let ewbNo = '';
@@ -532,7 +384,7 @@ export async function queryAndPopulateEwayBill(invoice, companyName, host = 'loc
   let ackDate = '';
 
   if (tallyResp) {
-    const vchRegex = new RegExp(`<VOUCHER [^>]*>([\\s\\S]*?)</VOUCHER>`, 'gi');
+    const vchRegex = /<VOUCHER [^>]*>([\s\S]*?)<\/VOUCHER>/gi;
     let match;
     while ((match = vchRegex.exec(tallyResp)) !== null) {
       const vchXml = match[1];
@@ -562,34 +414,15 @@ export async function queryAndPopulateEwayBill(invoice, companyName, host = 'loc
       distance: invoice.distance || 85,
       syncedAt: new Date().toISOString()
     };
-  } else if (invoice.ewayBill?.ewayBillNo) {
-    // Keep existing
-  } else if (invoice.ewayBillNo) {
+  } else if (!invoice.ewayBill?.ewayBillNo && invoice.ewayBillNo) {
     invoice.ewayBill = {
       status: 'Active (Manual/Portal)',
       ewayBillNo: invoice.ewayBillNo,
-      ewayBillDate: invoice.originalDate || invoice.date,
+      ewayBillDate: invoice.date,
       validUntil: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
       transporter: invoice.transporter || 'Patel Freight',
       transporterId: invoice.transporterId || '',
       vehicleNo: invoice.vehicleNo || '',
-      distance: invoice.distance || 85,
-      syncedAt: new Date().toISOString()
-    };
-  } else {
-    // Standard Gujarat sequence
-    const stateCode = invoice.stateCode || '24';
-    const cleanSeq = String(invoice.invoiceNo).replace(/\D/g, '').slice(-3).padStart(3, '0') || '186';
-    const syntheticEwb = `${stateCode}${cleanSeq}82500${Math.floor(100 + Math.random() * 900)}`;
-
-    invoice.ewayBill = {
-      status: 'Active (e-Way Bill)',
-      ewayBillNo: syntheticEwb,
-      ewayBillDate: invoice.originalDate || invoice.date,
-      validUntil: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
-      transporter: invoice.transporter || 'Patel Freight',
-      transporterId: invoice.transporterId || '',
-      vehicleNo: invoice.vehicleNo || 'GJ-01-AB-1860',
       distance: invoice.distance || 85,
       syncedAt: new Date().toISOString()
     };
@@ -602,143 +435,93 @@ export async function queryAndPopulateEwayBill(invoice, companyName, host = 'loc
   return invoice.ewayBill;
 }
 
-// 8. Fetch e-Way Bill & e-Invoice generated by Tally Prime
 router.post('/fetch-eway-bill/:id', async (req, res) => {
   try {
-    const settings = await readSettings();
-    const invoices = await readInvoices();
-    const invoice = invoices.find((i) => i.id === req.params.id || i.invoiceNo === req.params.id);
-
+    const invoice = await getInvoice(req.params.id);
     if (!invoice) return res.status(404).json({ success: false, error: 'Invoice not found' });
 
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
-    const detectedCompany = await getActiveTallyCompany(host, port);
-    const companyName = detectedCompany || settings.tally?.companyName || 'Sanmati Solution';
-
-    await queryAndPopulateEwayBill(invoice, companyName, host, port);
-    await writeInvoices(invoices);
+    const { opts, company } = await tallyContext();
+    await queryAndPopulateEwayBill(invoice, company, opts);
+    await updateInvoice(invoice);
 
     res.json({
       success: true,
       invoiceNo: invoice.invoiceNo,
       ewayBill: invoice.ewayBill,
-      message: `e-Way Bill #${invoice.ewayBill.ewayBillNo} retrieved & saved for Bill #${invoice.invoiceNo}.`
+      message: `e-Way Bill #${invoice.ewayBill?.ewayBillNo || 'n/a'} saved for Bill #${invoice.invoiceNo}.`
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 9. Test e-Way Bill Portal & Credentials Handshake
 router.post('/test-eway-connection', async (req, res) => {
   try {
-    const settings = await readSettings();
+    const settings = await getSettings();
     const ewbCfg = settings.ewayBill || {};
-    const gstin = ewbCfg.gstin || settings.company?.gstin || '24AKNPP7596H1ZF';
-    const username = ewbCfg.portalUsername || 'yamuna_ewb';
-    const provider = ewbCfg.gspProvider || 'NIC Direct Portal / Tally GSP';
-
-    // Simulate/perform secure authentication handshake with e-Way Bill Gateway
-    await new Promise((r) => setTimeout(r, 600));
-
     res.json({
       success: true,
-      gstin,
-      username,
-      provider,
-      status: 'Active & Authenticated',
-      tokenExpiry: new Date(Date.now() + 6 * 3600000).toISOString(),
-      message: `Successfully connected to Government e-Way Bill System (${provider}) for GSTIN ${gstin}. Live auto-generation is ACTIVE.`
+      gstin: ewbCfg.gstin || settings.company?.gstin,
+      provider: ewbCfg.gspProvider || 'NIC Direct Portal / Tally GSP',
+      status: ewbCfg.enabled ? 'Configured' : 'Disabled',
+      message: ewbCfg.enabled
+        ? 'e-Way Bill generation is enabled. Numbers are picked up from Tally after a bill is pushed.'
+        : 'e-Way Bill generation is currently disabled in settings.'
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 10. Sync / Scan e-Way Bills for ALL Invoices from Tally
 router.post('/sync-all-eway-bills', async (req, res) => {
   try {
-    const settings = await readSettings();
-    const invoices = await readInvoices();
-    const host = settings.tally?.host || 'localhost';
-    const port = settings.tally?.port || 9000;
-    const detectedCompany = await getActiveTallyCompany(host, port);
-    const companyName = detectedCompany || settings.tally?.companyName || 'Sanmati Solution';
-
-    let updatedCount = 0;
+    const invoices = await getInvoices();
+    const { opts, company } = await tallyContext();
+    let updated = 0;
     for (const inv of invoices) {
-      await queryAndPopulateEwayBill(inv, companyName, host, port);
-      updatedCount++;
+      await queryAndPopulateEwayBill(inv, company, opts);
+      await updateInvoice(inv);
+      updated++;
     }
-
-    await writeInvoices(invoices);
-
-    res.json({
-      success: true,
-      updatedCount,
-      totalInvoices: invoices.length,
-      message: `Scanned & updated e-Way Bills for all ${updatedCount} invoices. All records are in sync!`
-    });
+    res.json({ success: true, updatedCount: updated, totalInvoices: invoices.length });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 11. Download 1-Click Tally Bridge Scripts & TDL
-router.get('/download-bridge-bat', async (req, res) => {
+// ---------------------------------------------------------------------------
+// 8. Downloadable helper files
+// ---------------------------------------------------------------------------
+
+function cloudUrlFromRequest(req) {
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  if (process.env.CLOUD_URL) return process.env.CLOUD_URL;
+  if (host && !host.includes('localhost') && !host.includes('127.0.0.1')) {
+    return `${proto}://${host}`;
+  }
+  return 'https://yamuna.sanmatisolution.com';
+}
+
+async function sendScriptFile(req, res, filename, contentType) {
   try {
-    const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.bat');
+    const file = path.join(__dirname, '..', '..', 'scripts', filename);
     let content = await fs.readFile(file, 'utf8');
+    const target = cloudUrlFromRequest(req);
+    content = content
+      .replace(/\$CloudUrl\s*=\s*"[^"]*"/, `$CloudUrl = "${target}"`)
+      .replace(/\$CloudUrl\s*=\s*'[^']*'/, `$CloudUrl = '${target}'`);
 
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-    const host = req.headers['x-forwarded-host'] || req.get('host');
-    let targetCloudUrl = process.env.CLOUD_URL;
-    if (!targetCloudUrl && host) {
-      targetCloudUrl = `${proto}://${host}`;
-    }
-    if (!targetCloudUrl) {
-      targetCloudUrl = 'https://yamuna.sanmatisolution.com';
-    }
-
-    if (targetCloudUrl && !targetCloudUrl.includes('localhost') && !targetCloudUrl.includes('127.0.0.1')) {
-      content = content.replace(/\$CloudUrl\s*=\s*"[^"]*"/, `$CloudUrl = "${targetCloudUrl}"`);
-    }
-
-    res.setHeader('Content-Disposition', 'attachment; filename="Yamuna-Tally-Bridge.bat"');
-    res.setHeader('Content-Type', 'application/x-bat');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', contentType);
     res.send(content);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to download bridge file: ' + err.message });
+    res.status(500).json({ error: 'Failed to read file: ' + err.message });
   }
-});
+}
 
-router.get('/download-bridge-ps1', async (req, res) => {
-  try {
-    const file = path.join(__dirname, '..', '..', 'scripts', 'Yamuna-Tally-Bridge.ps1');
-    let content = await fs.readFile(file, 'utf8');
-
-    const proto = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-    const host = req.headers['x-forwarded-host'] || req.get('host');
-    let targetCloudUrl = process.env.CLOUD_URL;
-    if (!targetCloudUrl && host) {
-      targetCloudUrl = `${proto}://${host}`;
-    }
-    if (!targetCloudUrl) {
-      targetCloudUrl = 'https://yamuna.sanmatisolution.com';
-    }
-
-    if (targetCloudUrl && !targetCloudUrl.includes('localhost') && !targetCloudUrl.includes('127.0.0.1')) {
-      content = content.replace(/\$CloudUrl\s*=\s*"[^"]*"/, `$CloudUrl = "${targetCloudUrl}"`);
-    }
-
-    res.setHeader('Content-Disposition', 'attachment; filename="Yamuna-Tally-Bridge.ps1"');
-    res.setHeader('Content-Type', 'text/plain');
-    res.send(content);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to download bridge file: ' + err.message });
-  }
-});
+router.get('/download-bridge-bat', (req, res) => sendScriptFile(req, res, 'Yamuna-Tally-Bridge.bat', 'application/x-bat'));
+router.get('/download-bridge-ps1', (req, res) => sendScriptFile(req, res, 'Yamuna-Tally-Bridge.ps1', 'text/plain'));
 
 router.get('/download-tdl', (req, res) => {
   const file = path.join(__dirname, '..', '..', 'tdl', 'YamunaPlastics_Sync.tdl');

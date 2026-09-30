@@ -1,282 +1,278 @@
 /**
- * Background Cloud-to-Tally Bridge Agent
- * Runs automatically on the user's local PC inside the local server.
- * Listens for 1-click sync triggers from the web portal and keeps
- * Tally Prime & the Cloud Portal in sync in real time without any .bat execution.
+ * Local Tally bridge agent.
+ *
+ * This is the only component that can see Tally. It runs on the accountant's PC
+ * (alongside the local server, or standalone) and is the reason the cloud portal
+ * can stay in sync at all: the cloud cannot reach that PC's localhost:9000.
+ *
+ * Every cycle it:
+ *   1. reads Tally masters (customers + stock items) and voucher numbers
+ *   2. pushes them up to the portal
+ *   3. pulls pending bills from the portal and creates them in Tally,
+ *      refusing any voucher number Tally already holds
  */
 
-const CLOUD_URL = process.env.CLOUD_URL || 'https://yamuna.sanmatisolution.com';
-const TALLY_PORT = process.env.TALLY_PORT || 9000;
+import fs from 'fs';
+import path from 'path';
+import {
+  postXml,
+  fetchMaxVoucherNumber,
+  fetchDebtorsXml,
+  fetchStockItemsXml,
+  voucherImportEnvelope,
+  parseImportResponse
+} from '../lib/tallyClient.js';
 
-const xmlDebtorQuery = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>DebtorCollection</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <COLLECTION NAME="DebtorCollection">
-            <TYPE>Ledger</TYPE>
-            <CHILDOF>$$GroupSundryDebtors</CHILDOF>
-            <BELONGSTO>Yes</BELONGSTO>
-            <FETCH>NAME, PARENT, PARTYGSTIN, STATENAME, LEDSTATENAME, ADDRESS.LIST, ADDRESS, PINCODE, LEDGERPHONE, LEDGERMOBILE</FETCH>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
+const CLOUD_URL = (process.env.CLOUD_URL || 'https://yamuna.sanmatisolution.com').replace(/\/$/, '');
+const TALLY_PORT = Number(process.env.TALLY_PORT || 9000);
+const BRIDGE_KEY = process.env.BRIDGE_KEY || '';
+const MASTERS_WATCH_FILE = process.env.MASTERS_WATCH_FILE || 'C:\\TallyPrime\\YamunaPlastics_Masters.xml';
+const SYNC_INTERVAL_MS = Number(process.env.BRIDGE_SYNC_INTERVAL_MS || 15000);
+const POLL_INTERVAL_MS = Number(process.env.BRIDGE_POLL_INTERVAL_MS || 2000);
 
-const xmlStockQuery = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>StockCollection</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <COLLECTION NAME="StockCollection">
-            <TYPE>StockItem</TYPE>
-            <FETCH>NAME, BASEUNITS, RATE, OPENINGRATE, CLOSINGRATE, HSNCODE, HSNDETAILS, GSTRATEDETAILS, STANDARDCOST, STANDARDPRICE, LASTSALERATE, PARENT, CATEGORY, DESCRIPTION, PARTNO, CLOSINGBALANCE, OPENINGBALANCE, GSTRATE, INTEGRATEDTAX, MAILINGNAME</FETCH>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
+const TALLY_OPTS = { host: 'localhost', port: TALLY_PORT };
 
-const xmlVoucherQuery = `<?xml version="1.0" encoding="utf-8"?>
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Collection</TYPE>
-    <ID>SalesVoucherCollection</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-        <SVFROMDATE>20000101</SVFROMDATE>
-        <SVTODATE>20991231</SVTODATE>
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <COLLECTION NAME="SalesVoucherCollection">
-            <TYPE>Voucher</TYPE>
-            <FETCH>VOUCHERNUMBER, DATE, PARTYLEDGERNAME</FETCH>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
-  </BODY>
-</ENVELOPE>`;
+/** Every cloud call carries the shared key so the API accepts the agent. */
+function cloudHeaders(extra = {}) {
+  return {
+    'Content-Type': 'application/json',
+    ...(BRIDGE_KEY ? { 'X-Bridge-Key': BRIDGE_KEY } : {}),
+    ...extra
+  };
+}
+
+async function cloudGet(pathname) {
+  const res = await fetch(`${CLOUD_URL}${pathname}`, {
+    headers: cloudHeaders(),
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!res.ok) throw new Error(`${pathname} returned ${res.status}`);
+  return res.json();
+}
+
+async function cloudPost(pathname, body, contentType = 'application/json') {
+  const res = await fetch(`${CLOUD_URL}${pathname}`, {
+    method: 'POST',
+    headers: cloudHeaders({ 'Content-Type': contentType }),
+    body: typeof body === 'string' ? body : JSON.stringify(body),
+    signal: AbortSignal.timeout(15000)
+  });
+  const text = await res.text();
+  let data = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { raw: text.slice(0, 200) };
+  }
+  if (!res.ok) throw new Error(data.error || `${pathname} returned ${res.status}`);
+  return data;
+}
 
 let isSyncing = false;
+let lastMastersPush = { at: 0, size: 0 };
+
+/** Push whatever Tally wrote to the masters export file. */
+async function pushMastersFileIfChanged() {
+  let stat;
+  try {
+    stat = fs.statSync(MASTERS_WATCH_FILE);
+  } catch {
+    return null; // file not there yet - the TDL export has not been run
+  }
+  if (stat.size === lastMastersPush.size && Math.abs(stat.mtimeMs - lastMastersPush.at) < 1000) {
+    return null; // unchanged since last push
+  }
+
+  const xml = fs.readFileSync(MASTERS_WATCH_FILE, 'utf8');
+  if (!xml.trim()) return null;
+
+  const result = await cloudPost('/api/masters/tally-push', xml, 'application/xml');
+  lastMastersPush = { at: stat.mtimeMs, size: stat.size };
+  console.log(`[Bridge] pushed masters file (${stat.size} bytes): ${result.message || 'ok'}`);
+  return result;
+}
+
+/**
+ * Create pending portal bills in Tally.
+ * Duplicate numbers are skipped, not pushed - a number already in Tally is
+ * never created twice.
+ */
+async function pushPendingBills() {
+  const { pendingBills = [] } = await cloudGet('/api/tally/pending-bills');
+  if (pendingBills.length === 0) return { synced: 0, skipped: 0, total: 0 };
+
+  const { numbers } = await fetchMaxVoucherNumber(TALLY_OPTS);
+  const existing = new Set(numbers);
+
+  let synced = 0;
+  let skipped = 0;
+  const errors = [];
+
+  for (const bill of pendingBills) {
+    try {
+      if (existing.has(bill.invoiceNo)) {
+        await cloudPost(`/api/tally/mark-synced/${bill.id}`, {
+          method: '1-Click Cloud Bridge (already in Tally)',
+          tallyVoucherNo: bill.invoiceNo
+        });
+        skipped++;
+        console.log(`[Bridge] ${bill.invoiceNo} already exists in Tally - marked synced, no duplicate created.`);
+        continue;
+      }
+
+      const xmlRes = await fetch(`${CLOUD_URL}/api/tally/invoice-xml/${bill.id}`, {
+        headers: cloudHeaders(),
+        signal: AbortSignal.timeout(10000)
+      });
+      const voucherXml = await xmlRes.text();
+      if (!xmlRes.ok || voucherXml.includes('<!-- Error')) {
+        throw new Error(`could not fetch voucher XML (${voucherXml.slice(0, 120)})`);
+      }
+
+      const settings = await cloudGet('/api/settings').catch(() => null);
+      const company =
+        settings?.tally?.companyName || 'Sanmati Solution';
+
+      const responseText = await postXml(voucherImportEnvelope(voucherXml, company), {
+        ...TALLY_OPTS,
+        timeoutMs: 15000
+      });
+      const result = parseImportResponse(responseText);
+
+      if ((result.created > 0 || result.altered > 0) && result.errors === 0) {
+        existing.add(bill.invoiceNo);
+        await cloudPost(`/api/tally/mark-synced/${bill.id}`, {
+          method: '1-Click Cloud Bridge',
+          tallyVoucherNo: bill.invoiceNo
+        });
+        synced++;
+      } else {
+        errors.push(`${bill.invoiceNo}: ${result.lineError || 'Tally rejected the voucher'}`);
+      }
+    } catch (err) {
+      errors.push(`${bill.invoiceNo}: ${err.message}`);
+    }
+  }
+
+  return { synced, skipped, total: pendingBills.length, errors };
+}
 
 export async function executeTallySyncCycle() {
   if (isSyncing) return { success: false, reason: 'Sync already in progress' };
   isSyncing = true;
 
   try {
-    // 1. Pull Debtor Masters from local Tally Prime
-    let debtorXml = '';
+    const [debtors, stock, vouchers] = await Promise.allSettled([
+      fetchDebtorsXml({ ...TALLY_OPTS, timeoutMs: 10000 }),
+      fetchStockItemsXml({ ...TALLY_OPTS, timeoutMs: 10000 }),
+      fetchMaxVoucherNumber({ ...TALLY_OPTS, timeoutMs: 10000 })
+    ]);
+
+    if ([debtors, stock, vouchers].every((r) => r.status === 'rejected')) {
+      throw new Error(
+        `Could not reach Tally Prime on localhost:${TALLY_PORT}. Open Tally and press F1 > Settings > Connectivity > Enable.`
+      );
+    }
+
+    // Tell the portal what Tally's highest voucher number is. This is what keeps
+    // the portal's next bill number ahead of Tally.
+    const voucherData = vouchers.status === 'fulfilled' ? vouchers.value : { max: 0, count: 0, numbers: [] };
+    let tallyCompany = null;
     try {
-      const tallyDebtorRes = await fetch(`http://localhost:${TALLY_PORT}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-        body: xmlDebtorQuery,
-        signal: AbortSignal.timeout(6000)
-      });
-      if (tallyDebtorRes.ok) {
-        debtorXml = await tallyDebtorRes.text();
-      }
-    } catch (dErr) {
-      console.warn('[Bridge Agent] Debtor pull notice:', dErr.message);
+      const settings = await cloudGet('/api/settings');
+      tallyCompany = settings?.tally?.companyName || null;
+    } catch {
+      /* not fatal */
     }
 
-    // 2. Pull Stock Item (Products) Masters from local Tally Prime
-    let stockXml = '';
-    try {
-      const tallyStockRes = await fetch(`http://localhost:${TALLY_PORT}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-        body: xmlStockQuery,
-        signal: AbortSignal.timeout(6000)
-      });
-      if (tallyStockRes.ok) {
-        stockXml = await tallyStockRes.text();
-      }
-    } catch (sErr) {
-      console.warn('[Bridge Agent] Stock Item pull notice:', sErr.message);
-    }
-
-    // 3. Pull Vouchers from local Tally Prime to auto-identify latest voucher number
-    let voucherXml = '';
-    try {
-      const tallyVoucherRes = await fetch(`http://localhost:${TALLY_PORT}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-        body: xmlVoucherQuery,
-        signal: AbortSignal.timeout(6000)
-      });
-      if (tallyVoucherRes.ok) {
-        voucherXml = await tallyVoucherRes.text();
-      }
-    } catch (vErr) {
-      console.warn('[Bridge Agent] Voucher pull notice:', vErr.message);
-    }
-
-    if (!debtorXml && !stockXml && !voucherXml) {
-      throw new Error(`Could not connect to Tally Prime on localhost:${TALLY_PORT}. Ensure Tally Prime is open with Connectivity enabled.`);
-    }
-
-    const combinedXml = debtorXml + '\n' + stockXml + '\n' + voucherXml;
-
-    // 4. Push Debtors, Stock Items, and Vouchers to Live Cloud
-    const cloudPushRes = await fetch(`${CLOUD_URL}/api/masters/tally-push`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-      body: combinedXml,
-      signal: AbortSignal.timeout(10000)
+    await cloudPost('/api/masters/tally-reading', {
+      maxVoucher: voucherData.max,
+      voucherCount: voucherData.count,
+      company: tallyCompany
     });
 
-    const pushData = await cloudPushRes.json().catch(() => ({}));
-    const totalParties = pushData.partiesCount || 0;
-    const totalItems = pushData.itemsCount || 0;
-    const latestTallyVoucher = pushData.latestTallyVoucher;
-    const nextInvoiceNumber = pushData.nextInvoiceNumber;
-
-    if (latestTallyVoucher) {
-      console.log(`[Bridge Agent] Identified latest voucher in Tally: #${latestTallyVoucher} -> Next voucher auto-set to #${nextInvoiceNumber}`);
+    // Push masters (from Tally directly, and from the TDL export file if present).
+    let mastersResult = null;
+    const combinedXml = `${debtors.status === 'fulfilled' ? debtors.value : ''}\n${
+      stock.status === 'fulfilled' ? stock.value : ''
+    }`;
+    if (combinedXml.trim()) {
+      mastersResult = await cloudPost('/api/masters/tally-push', combinedXml, 'application/xml');
     }
+    const fileResult = await pushMastersFileIfChanged().catch((e) => {
+      console.warn('[Bridge] masters file push notice:', e.message);
+      return null;
+    });
 
-    // 3. Check for any pending bills created on the cloud and post them into local Tally
-    let syncedBillsCount = 0;
-    try {
-      const pendingRes = await fetch(`${CLOUD_URL}/api/tally/pending-bills`, {
-        signal: AbortSignal.timeout(8000)
-      });
-      const pendingData = await pendingRes.json().catch(() => ({}));
-      const pendingBills = pendingData.pendingBills || [];
-
-      for (const bill of pendingBills) {
-        try {
-          const vchRes = await fetch(`${CLOUD_URL}/api/tally/invoice-xml/${bill.id}`, {
-            signal: AbortSignal.timeout(8000)
-          });
-          const vchXml = await vchRes.text();
-
-          const tallyPost = await fetch(`http://localhost:${TALLY_PORT}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-            body: vchXml,
-            signal: AbortSignal.timeout(10000)
-          });
-
-          const tallyResp = await tallyPost.text();
-          const created = Number((tallyResp.match(/<CREATED>(\d+)<\/CREATED>/) || [])[1] || 0);
-          const altered = Number((tallyResp.match(/<ALTERED>(\d+)<\/ALTERED>/) || [])[1] || 0);
-          const errors = Number((tallyResp.match(/<ERRORS>(\d+)<\/ERRORS>/) || [])[1] || 0);
-
-          if ((created > 0 || altered > 0) && errors === 0) {
-            syncedBillsCount++;
-            await fetch(`${CLOUD_URL}/api/tally/mark-synced/${bill.id}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                method: '1-Click Cloud Bridge',
-                tallyVoucherNo: bill.invoiceNo
-              })
-            }).catch(() => {});
-          }
-        } catch (vchErr) {
-          console.warn(`[Bridge Agent] Voucher ${bill.invoiceNo} sync notice:`, vchErr.message);
-        }
-      }
-    } catch (pendingErr) {
-      console.warn('[Bridge Agent] Pending bills check notice:', pendingErr.message);
-    }
+    // Push pending portal bills into Tally.
+    const bills = await pushPendingBills();
 
     return {
       success: true,
-      totalParties,
-      totalItems,
-      syncedBillsCount,
-      message: `Direct Tally Sync Complete: ${totalParties} Customers & ${totalItems} Products loaded!`
+      totalParties: mastersResult?.partiesCount ?? null,
+      totalItems: mastersResult?.itemsCount ?? null,
+      latestTallyVoucher: voucherData.max || null,
+      tallyMaxVoucher: voucherData.max || null,
+      tallyCompany,
+      syncedBillsCount: bills.synced,
+      skippedBillsCount: bills.skipped,
+      errors: bills.errors?.length ? bills.errors : undefined,
+      message:
+        `Synced with Tally: ${bills.synced} bill(s) pushed, ${bills.skipped} already present, ` +
+        `latest Tally voucher #${voucherData.max || 0}.`
     };
   } catch (err) {
-    return {
-      success: false,
-      error: err.message
-    };
+    return { success: false, error: err.message };
   } finally {
     isSyncing = false;
   }
 }
 
 export function startCloudBridgeAgent() {
-  // Only run the local polling agent if running on local machine (not on Render cloud)
   if (process.env.RENDER) {
-    console.log('[Bridge] Running on Render Cloud. Polling agent disabled on server.');
+    console.log('[Bridge] Running on Render cloud - the local polling agent is disabled here.');
     return;
   }
+  if (!BRIDGE_KEY) {
+    console.warn('[Bridge] BRIDGE_KEY is not set. Cloud calls from this PC will be rejected.');
+  }
 
-  console.log(`[Bridge Agent] Initialized. Monitoring ${CLOUD_URL} for 1-click sync commands...`);
+  console.log(`[Bridge] Watching ${CLOUD_URL} and Tally on localhost:${TALLY_PORT}.`);
 
-  // Periodic background voucher sync every 15 seconds to detect newly created Tally bills
-  setInterval(async () => {
+  const cycle = async () => {
     try {
-      await executeTallySyncCycle();
-    } catch {
-      // Quietly ignore if Tally offline
-    }
-  }, 15000);
-
-  // Poll loop: checks for triggers every 2 seconds
-  setInterval(async () => {
-    try {
-      const pollRes = await fetch(`${CLOUD_URL}/api/bridge/poll`, {
-        signal: AbortSignal.timeout(5000)
-      });
-      if (!pollRes.ok) return;
-
-      const pollData = await pollRes.json();
-      if (pollData && pollData.hasPending && pollData.command) {
-        console.log(`[Bridge Agent] Received 1-click sync trigger from web app (Cmd: ${pollData.command.id})`);
-        const result = await executeTallySyncCycle();
-
-        await fetch(`${CLOUD_URL}/api/bridge/complete`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            commandId: pollData.command.id,
-            success: result.success,
-            result,
-            error: result.error
-          }),
-          signal: AbortSignal.timeout(8000)
+      const result = await executeTallySyncCycle();
+      if (result.success) {
+        await cloudPost('/api/bridge/complete', {
+          success: true,
+          result
         }).catch(() => {});
-
-        console.log(`[Bridge Agent] Command ${pollData.command.id} completed. Success: ${result.success}`);
       }
     } catch {
-      // Quietly ignore network blips
+      /* Tally offline - stay quiet, the next cycle retries */
     }
-  }, 2000);
+  };
+
+  setInterval(cycle, SYNC_INTERVAL_MS);
+  setTimeout(cycle, 3000);
+
+  // Command polling keeps the 1-click button in the UI responsive.
+  setInterval(async () => {
+    try {
+      await cloudPost('/api/bridge/heartbeat', {}).catch(() => {});
+      const poll = await cloudGet('/api/bridge/poll');
+      if (poll.hasPending && poll.command) {
+        console.log(`[Bridge] running command ${poll.command.id}`);
+        const result = await executeTallySyncCycle();
+        await cloudPost('/api/bridge/complete', {
+          commandId: poll.command.id,
+          success: result.success,
+          result,
+          error: result.error
+        }).catch(() => {});
+      }
+    } catch {
+      /* network blip */
+    }
+  }, POLL_INTERVAL_MS);
 }
