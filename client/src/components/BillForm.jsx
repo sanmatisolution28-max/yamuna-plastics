@@ -78,19 +78,16 @@ export default function BillForm({
   const [errorMsg, setErrorMsg] = useState('');
   const [successNotice, setSuccessNotice] = useState(null);
   const [autoVoucherInfo, setAutoVoucherInfo] = useState(null);
-  const [loadingVoucherInfo, setLoadingVoucherInfo] = useState(false);
 
-  // Auto-identify latest voucher number on form open
+  // Auto-identify latest voucher number. Runs on mount and then every 10s,
+  // so the number shown is never stale and there is no button to re-fetch it.
   const refreshVoucherSequence = async () => {
     if (isEditing) return;
-    setLoadingVoucherInfo(true);
     try {
       const data = await api.getNextInvoiceNumber();
       if (data) setAutoVoucherInfo(data);
     } catch {
       // Fallback to settings
-    } finally {
-      setLoadingVoucherInfo(false);
     }
   };
 
@@ -797,23 +794,6 @@ export default function BillForm({
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700 }}>THIS NEW BILL WILL BE:</div>
               <div style={{ fontSize: '16px', fontWeight: 900, color: 'var(--success-ink)' }}>{newBillNo}</div>
             </div>
-            <button
-              type="button"
-              onClick={refreshVoucherSequence}
-              style={{
-                background: 'var(--bg-card)',
-                border: '1px solid var(--border-medium)',
-                borderRadius: '8px',
-                padding: '6px 12px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                color: 'var(--primary)'
-              }}
-              title="Check latest voucher number from Tally & Server"
-            >
-              {loadingVoucherInfo ? '⏳ Checking...' : '🔄 Auto-Identify'}
-            </button>
           </div>
         </div>
       )}
