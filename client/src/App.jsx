@@ -344,6 +344,7 @@ useEffect(() => {
             {activeTab === 'invoices' && (
               <BillList
                 invoices={invoices}
+                settings={settings}
                 onViewInvoice={(inv) => setViewingInvoice(inv)}
                 onEditInvoice={handleEditInvoice}
                 onRefreshInvoices={loadData}

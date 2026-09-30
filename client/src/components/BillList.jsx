@@ -2,12 +2,30 @@ import React, { useState } from 'react';
 import { formatINR } from '../utils/numberToWords';
 import { api } from '../utils/api';
 
-export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, onRefreshInvoices }) {
+export default function BillList({ invoices = [], settings, onViewInvoice, onEditInvoice, onRefreshInvoices }) {
   const [filter, setFilter] = useState('all'); // all | pending | synced
   const [search, setSearch] = useState('');
   const [syncingId, setSyncingId] = useState(null);
   const [batchSyncing, setBatchSyncing] = useState(false);
   const [feedback, setFeedback] = useState(null);
+
+  // Calculate highest existing voucher and next sequence
+  let maxNum = 0;
+  let latestInvoiceNo = null;
+  for (const inv of invoices) {
+    const match = String(inv.invoiceNo || '').match(/(\d+)$/);
+    if (match) {
+      const num = parseInt(match[1], 10);
+      if (num > maxNum) {
+        maxNum = num;
+        latestInvoiceNo = inv.invoiceNo;
+      }
+    }
+  }
+
+  const prefix = settings?.invoicePrefix || 'YP/26-27/';
+  const nextSeq = Math.max(Number(settings?.nextInvoiceNumber) || 1, maxNum + 1);
+  const nextInvoiceNo = `${prefix}${nextSeq}`;
 
   // Filter list
   const filtered = invoices.filter((inv) => {
@@ -69,6 +87,50 @@ export default function BillList({ invoices = [], onViewInvoice, onEditInvoice, 
 
   return (
     <div className="bill-list-container" style={{ maxWidth: '1100px', margin: '0 auto', padding: '16px 20px 40px' }}>
+      {/* 1. Voucher Sequence & KPI Banner */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: '12px',
+        marginBottom: '18px'
+      }}>
+        <div style={{ background: 'var(--bg-card)', padding: '14px 18px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Latest Voucher Created
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--primary-ink)', marginTop: '4px' }}>
+            {latestInvoiceNo || 'None Yet (Fresh)'}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            {latestInvoiceNo ? `Max voucher recorded: #${maxNum}` : 'Ready for first bill'}
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '14px 18px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Next Auto Voucher #
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--success-ink)', marginTop: '4px' }}>
+            {nextInvoiceNo}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            ⚡ Auto-incremented sequence
+          </div>
+        </div>
+
+        <div style={{ background: 'var(--bg-card)', padding: '14px 18px', borderRadius: '12px', border: '1px solid var(--border-light)' }}>
+          <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Tally Prime Sync
+          </div>
+          <div style={{ fontSize: '20px', fontWeight: 900, color: pendingCount === 0 ? 'var(--success-ink)' : 'var(--warning-ink)', marginTop: '4px' }}>
+            {pendingCount === 0 ? '100% In Sync' : `${pendingCount} Pending`}
+          </div>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>
+            {syncedCount} of {invoices.length} vouchers in Tally
+          </div>
+        </div>
+      </div>
+
       {/* Banner / Feedback */}
       {feedback && (
         <div className={`workbench-alert ${feedback.type}`} style={{ marginBottom: '14px' }}>
