@@ -562,6 +562,74 @@ export async function recordTallyReading(maxVoucher, company) {
 }
 
 // ---------------------------------------------------------------------------
+// Bridge command queue
+// ---------------------------------------------------------------------------
+
+/**
+ * Commands live in Mongo, not in a module variable.
+ *
+ * They used to be an in-memory `activeCommand` that expired after 45s, so a
+ * sync requested while the accountant's PC was switched off was thrown away
+ * without a trace, and any Render restart dropped the queue entirely. The
+ * command now survives both, and expires only after PENDING_TTL_MS of nobody
+ * at all picking it up.
+ */
+const cmdCol = () => db.collection('bridge_commands');
+
+export const PENDING_TTL_MS = 24 * 60 * 60 * 1000;
+
+export async function queueBridgeCommand(type = 'SYNC_ALL') {
+  const now = Date.now();
+  const command = {
+    _id: `CMD-${now}-${Math.floor(Math.random() * 1000)}`,
+    type,
+    status: 'PENDING',
+    createdAt: now,
+    updatedAt: now
+  };
+  // A single slot: a newer request supersedes anything still waiting.
+  await cmdCol().deleteMany({ status: 'PENDING' });
+  await cmdCol().insertOne({ ...command });
+  return command;
+}
+
+export async function claimPendingCommand() {
+  const now = Date.now();
+  await cmdCol().deleteMany({ status: 'PENDING', createdAt: { $lt: now - PENDING_TTL_MS } });
+  return cmdCol().findOneAndUpdate(
+    { status: 'PENDING' },
+    { $set: { status: 'CLAIMED', claimedAt: now, updatedAt: now } },
+    { sort: { createdAt: 1 }, returnDocument: 'after' }
+  );
+}
+
+export async function completeBridgeCommand(id, { success, result, error }) {
+  if (!id) return;
+  await cmdCol().updateOne(
+    { _id: id },
+    {
+      $set: {
+        status: success ? 'COMPLETED' : 'FAILED',
+        result: result || null,
+        error: error || null,
+        completedAt: Date.now(),
+        updatedAt: Date.now()
+      }
+    }
+  );
+}
+
+export async function getBridgeCommand(id) {
+  if (!id) return null;
+  return cmdCol().findOne({ _id: id });
+}
+
+/** True when a request is queued and the agent has not come back for it yet. */
+export async function hasPendingBridgeCommand() {
+  return Boolean(await cmdCol().findOne({ status: 'PENDING' }, { projection: { _id: 1 } }));
+}
+
+// ---------------------------------------------------------------------------
 // Users
 // ---------------------------------------------------------------------------
 

@@ -1,12 +1,20 @@
 import express from 'express';
-import { getBridgeState, recordHeartbeat, recordSyncResult, recordTallyReading } from '../lib/db.js';
+import {
+  getBridgeState,
+  recordHeartbeat,
+  recordSyncResult,
+  recordTallyReading,
+  queueBridgeCommand,
+  claimPendingCommand,
+  completeBridgeCommand,
+  getBridgeCommand,
+  hasPendingBridgeCommand
+} from '../lib/db.js';
 
 const router = express.Router();
 
-const COMMAND_TTL_MS = 45 * 1000;
 const AGENT_STALE_MS = 90 * 1000; // the agent beats every 15s
 
-let activeCommand = null;
 let lastSyncResult = null;
 
 function isAgentOnline(bridge) {
@@ -14,71 +22,86 @@ function isAgentOnline(bridge) {
 }
 
 /** 1. Web UI asks the local agent to run a sync cycle. */
-router.post('/trigger', (req, res) => {
-  const { type = 'SYNC_ALL' } = req.body || {};
-  activeCommand = {
-    id: `CMD-${Date.now()}`,
-    type,
-    status: 'PENDING',
-    createdAt: Date.now()
-  };
-  res.json({
-    success: true,
-    commandId: activeCommand.id,
-    message: 'Sync command queued for the local Tally agent.'
-  });
+router.post('/trigger', async (req, res) => {
+  try {
+    const { type = 'SYNC_ALL' } = req.body || {};
+    const command = await queueBridgeCommand(type);
+    const bridge = await getBridgeState();
+    const online = isAgentOnline(bridge);
+
+    // The command is queued either way. It stays PENDING until an agent picks
+    // it up, so asking for a sync while the PC is off works once it comes back
+    // rather than being silently dropped.
+    res.json({
+      success: true,
+      commandId: command._id,
+      agentOnline: online,
+      queued: true,
+      message: online
+        ? 'Sync command queued for the local Tally agent.'
+        : 'The Tally agent on the office PC is not reachable right now. The command is saved and will run as soon as that PC is on with Tally open.'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 /** 2. Local agent polls for work. */
-router.get('/poll', (req, res) => {
-  if (activeCommand && Date.now() - activeCommand.createdAt > COMMAND_TTL_MS) {
-    activeCommand = null;
+router.get('/poll', async (req, res) => {
+  try {
+    const command = await claimPendingCommand();
+    res.json({
+      hasPending: Boolean(command),
+      command: command ? { id: command._id, type: command.type } : null,
+      serverTime: Date.now()
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
-  res.json({
-    hasPending: Boolean(activeCommand && activeCommand.status === 'PENDING'),
-    command: activeCommand && activeCommand.status === 'PENDING' ? activeCommand : null,
-    serverTime: Date.now()
-  });
 });
 
 /** 3. Local agent reports the outcome. */
 router.post('/complete', async (req, res) => {
-  const { commandId, success, result, error } = req.body || {};
-  if (activeCommand && (!commandId || activeCommand.id === commandId)) {
-    activeCommand.status = success ? 'COMPLETED' : 'FAILED';
-    activeCommand.completedAt = Date.now();
-    activeCommand.result = result;
-    activeCommand.error = error;
-  }
-  lastSyncResult = { commandId, success: Boolean(success), result, error, timestamp: Date.now() };
   try {
-    await recordSyncResult(result || { error }, result?.tallyMaxVoucher, result?.tallyCompany);
+    const { commandId, success, result, error } = req.body || {};
+    await completeBridgeCommand(commandId, { success, result, error });
+    lastSyncResult = { commandId, success: Boolean(success), result, error, timestamp: Date.now() };
+    try {
+      await recordSyncResult(result || { error }, result?.tallyMaxVoucher, result?.tallyCompany);
+    } catch (err) {
+      console.warn('[bridge] could not record sync result:', err.message);
+    }
+    res.json({ success: true });
   } catch (err) {
-    console.warn('[bridge] could not record sync result:', err.message);
+    res.status(500).json({ success: false, error: err.message });
   }
-  res.json({ success: true });
 });
 
 /** 4. Web UI waits on the command. */
-router.get('/status/:commandId', (req, res) => {
-  const { commandId } = req.params;
-  if (activeCommand && activeCommand.id === commandId) {
-    return res.json({
-      commandId,
-      status: activeCommand.status,
-      result: activeCommand.result,
-      error: activeCommand.error
-    });
+router.get('/status/:commandId', async (req, res) => {
+  try {
+    const { commandId } = req.params;
+    const command = await getBridgeCommand(commandId);
+    if (command) {
+      return res.json({
+        commandId,
+        status: command.status,
+        result: command.result,
+        error: command.error
+      });
+    }
+    if (lastSyncResult && lastSyncResult.commandId === commandId) {
+      return res.json({
+        commandId,
+        status: lastSyncResult.success ? 'COMPLETED' : 'FAILED',
+        result: lastSyncResult.result,
+        error: lastSyncResult.error
+      });
+    }
+    res.json({ commandId, status: 'NOT_FOUND' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-  if (lastSyncResult && lastSyncResult.commandId === commandId) {
-    return res.json({
-      commandId,
-      status: lastSyncResult.success ? 'COMPLETED' : 'FAILED',
-      result: lastSyncResult.result,
-      error: lastSyncResult.error
-    });
-  }
-  res.json({ commandId, status: 'NOT_FOUND' });
 });
 
 /**
@@ -121,6 +144,7 @@ router.get('/health', async (req, res) => {
       lastSyncAt: bridge?.lastSyncAt || null,
       tallyMaxVoucher: bridge?.tallyMaxVoucher || 0,
       tallyCompany: bridge?.tallyCompany || null,
+      pendingCommand: await hasPendingBridgeCommand(),
       lastSyncResult
     });
   } catch (err) {

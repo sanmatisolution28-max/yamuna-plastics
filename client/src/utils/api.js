@@ -227,6 +227,7 @@ export const api = {
 
     const triggerData = await triggerRes.json();
     const commandId = triggerData.commandId;
+    const agentOnline = triggerData.agentOnline !== false;
 
     // Poll for local PC agent to complete the sync (up to 14 seconds)
     const startTime = Date.now();
@@ -252,6 +253,18 @@ export const api = {
       } catch (pollErr) {
         if (pollErr.message && !pollErr.message.includes('fetch')) throw pollErr;
       }
+    }
+
+    // The office PC may simply be switched off. The command is stored, so say
+    // that plainly instead of blaming a timeout on a machine nobody is at.
+    if (!agentOnline) {
+      return {
+        success: true,
+        queued: true,
+        message:
+          'The Tally agent on the office PC is offline, so nothing has synced yet. ' +
+          'This request is saved and will run automatically the next time that PC is on with Tally Prime open.'
+      };
     }
 
     // Direct loopback fallback to local agent port with Private Network Access
