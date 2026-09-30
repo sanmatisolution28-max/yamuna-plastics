@@ -235,7 +235,9 @@ export const api = {
               success: true,
               message: statusData.result?.message || 'Tally Masters & Bills synchronized directly with Tally Prime!',
               totalParties: statusData.result?.totalParties,
-              totalItems: statusData.result?.totalItems
+              totalItems: statusData.result?.totalItems,
+              latestTallyVoucher: statusData.result?.latestTallyVoucher,
+              nextInvoiceNumber: statusData.result?.nextInvoiceNumber
             };
           } else if (statusData.status === 'FAILED') {
             throw new Error(statusData.error || 'Tally rejected synchronization request.');

@@ -67,9 +67,10 @@ export default function TallySync({
     try {
       const res = await api.triggerUniversalTallySync();
       if (res.success) {
+        const vchInfo = res.latestTallyVoucher ? ` | Latest Tally Voucher: #${res.latestTallyVoucher} -> Next Bill: #${res.nextInvoiceNumber}` : '';
         setMastersNotice({
           type: 'success',
-          text: `⚡ ${res.message || 'Customer Debtors loaded from Tally Prime!'} (${res.totalParties || parties.length} Customers)`
+          text: `⚡ ${res.message || 'Customer Debtors loaded from Tally Prime!'} (${res.totalParties || parties.length} Customers${vchInfo})`
         });
         if (onRefreshInvoices) onRefreshInvoices();
       } else {
@@ -245,6 +246,10 @@ export default function TallySync({
           <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
             <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--primary-ink)' }}>⚡ Ready</div>
             <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Stock Items (Products)</div>
+          </div>
+          <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
+            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--warning-ink)' }}>#{settings?.nextInvoiceNumber || 1}</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Next Auto Voucher #</div>
           </div>
         </div>
 

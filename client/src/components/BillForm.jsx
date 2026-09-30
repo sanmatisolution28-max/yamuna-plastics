@@ -78,6 +78,26 @@ export default function BillForm({
   const [errorMsg, setErrorMsg] = useState('');
   const [successNotice, setSuccessNotice] = useState(null);
   const [tallyNotice, setTallyNotice] = useState(null);
+  const [autoVoucherInfo, setAutoVoucherInfo] = useState(null);
+  const [loadingVoucherInfo, setLoadingVoucherInfo] = useState(false);
+
+  // Auto-identify latest voucher number on form open
+  const refreshVoucherSequence = async () => {
+    if (isEditing) return;
+    setLoadingVoucherInfo(true);
+    try {
+      const data = await api.getNextInvoiceNumber();
+      if (data) setAutoVoucherInfo(data);
+    } catch {
+      // Fallback to settings
+    } finally {
+      setLoadingVoucherInfo(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshVoucherSequence();
+  }, [isEditing]);
 
   // Filtered Debtors list for search
   const filteredParties = parties.filter((p) => {
@@ -102,6 +122,7 @@ export default function BillForm({
           type: 'success',
           text: `✅ ${res.message || 'Customer Debtors synced from Tally Prime!'} (${res.totalParties || parties.length} Customers ready)`
         });
+        await refreshVoucherSequence();
         if (onRefresh) await onRefresh();
       } else {
         setTallyNotice({
@@ -722,7 +743,27 @@ export default function BillForm({
       {/* 2. Invoice Meta Bar */}
       <div className="invoice-meta-card">
         <div className="meta-field-group">
-          <label>Voucher / Invoice #</label>
+          <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>Voucher / Invoice #</span>
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={refreshVoucherSequence}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: 'var(--primary)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  padding: 0
+                }}
+                title="Identify latest voucher number from system & Tally"
+              >
+                {loadingVoucherInfo ? '🔄 Checking...' : '🔄 Auto-Identify'}
+              </button>
+            )}
+          </label>
           <div
             className="meta-input"
             style={{
@@ -735,18 +776,31 @@ export default function BillForm({
               color: 'var(--primary-ink)'
             }}
           >
-            <span>{isEditing ? editingInvoice.invoiceNo : `${settings?.invoicePrefix || 'YP/26-27/'}${settings?.nextInvoiceNumber || 1}`}</span>
+            <span>
+              {isEditing
+                ? editingInvoice.invoiceNo
+                : (autoVoucherInfo?.invoiceNo || `${settings?.invoicePrefix || 'YP/26-27/'}${settings?.nextInvoiceNumber || 1}`)}
+            </span>
             <span
               className="badge"
               style={{
                 fontSize: '10px',
-                padding: '2px 6px',
+                padding: '2px 7px',
                 borderRadius: '6px',
-                background: isEditing ? 'var(--warning-light)' : 'var(--success-light)',
-                color: isEditing ? 'var(--warning-ink)' : 'var(--success-ink)'
+                background: isEditing
+                  ? 'var(--warning-light)'
+                  : 'var(--success-light)',
+                color: isEditing
+                  ? 'var(--warning-ink)'
+                  : 'var(--success-ink)',
+                border: '1px solid currentColor'
               }}
             >
-              {isEditing ? 'Editing' : 'Auto #'}
+              {isEditing
+                ? 'Editing'
+                : autoVoucherInfo?.latestIdentified !== undefined
+                  ? `Auto Synced (Last: #${autoVoucherInfo.latestIdentified})`
+                  : 'Auto #'}
             </span>
           </div>
         </div>

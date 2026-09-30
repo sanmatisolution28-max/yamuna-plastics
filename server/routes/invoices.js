@@ -131,6 +131,79 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET next available invoice sequence (MUST BE BEFORE /:id to prevent parameter capture)
+router.get('/next-number', async (req, res) => {
+  try {
+    const settings = await readSettings();
+    const list = await readInvoices();
+
+    // Check if local Tally is active to auto-identify any newly created vouchers in Tally
+    const host = settings.tally?.host || 'localhost';
+    const port = settings.tally?.port || 9000;
+    try {
+      const tallyProbeXml = `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Collection</TYPE>
+    <ID>SalesVoucherCollection</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+      </STATICVARIABLES>
+      <TDL>
+        <TDLMESSAGE>
+          <COLLECTION NAME="SalesVoucherCollection">
+            <TYPE>Voucher</TYPE>
+            <FETCH>VOUCHERNUMBER</FETCH>
+          </COLLECTION>
+        </TDLMESSAGE>
+      </TDL>
+    </DESC>
+  </BODY>
+</ENVELOPE>`;
+      const tRes = await fetch(`http://${host}:${port}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+        body: tallyProbeXml,
+        signal: AbortSignal.timeout(600)
+      });
+      if (tRes.ok) {
+        const tXml = await tRes.text();
+        const vchMatches = tXml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi);
+        let maxTally = 0;
+        for (const m of vchMatches) {
+          const num = extractInvoiceNumber(m[1]);
+          if (num !== null && !isNaN(num) && num > maxTally) maxTally = num;
+        }
+        if (maxTally > 0 && (Number(settings.nextInvoiceNumber) || 1) <= maxTally) {
+          settings.nextInvoiceNumber = maxTally + 1;
+          await updateNextInvoiceNumber(settings.nextInvoiceNumber);
+        }
+      }
+    } catch {
+      // Quietly ignore if Tally offline or Render cloud
+    }
+
+    const nextSeq = getNextInvoiceSequence(list, settings);
+    const prefix = settings.invoicePrefix || 'YP/26-27/';
+    const latestIdentified = Math.max(0, nextSeq - 1);
+
+    res.json({
+      nextSeq,
+      prefix,
+      invoiceNo: `${prefix}${nextSeq}`,
+      latestIdentified,
+      autoIdentified: true
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET single invoice
 router.get('/:id', async (req, res) => {
   try {
@@ -138,23 +211,6 @@ router.get('/:id', async (req, res) => {
     const inv = list.find((i) => i.id === req.params.id || i.invoiceNo === req.params.id);
     if (!inv) return res.status(404).json({ error: 'Invoice not found' });
     res.json(inv);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET next available invoice sequence
-router.get('/next-number', async (req, res) => {
-  try {
-    const settings = await readSettings();
-    const list = await readInvoices();
-    const nextSeq = getNextInvoiceSequence(list, settings);
-    const prefix = settings.invoicePrefix || 'YP/26-27/';
-    res.json({
-      nextSeq,
-      prefix,
-      invoiceNo: `${prefix}${nextSeq}`
-    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -117,6 +117,33 @@ $xmlStockQuery = @"
 </ENVELOPE>
 "@
 
+$xmlVoucherQuery = @"
+<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Collection</TYPE>
+    <ID>SalesVoucherCollection</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>`$`$SysName:XML</SVEXPORTFORMAT>
+      </STATICVARIABLES>
+      <TDL>
+        <TDLMESSAGE>
+          <COLLECTION NAME="SalesVoucherCollection">
+            <TYPE>Voucher</TYPE>
+            <FETCH>VOUCHERNUMBER, DATE, PARTYLEDGERNAME</FETCH>
+          </COLLECTION>
+        </TDLMESSAGE>
+      </TDL>
+    </DESC>
+  </BODY>
+</ENVELOPE>
+"@
+
 function Sync-TallyWithCloud {
     param([bool]$QuietIfOffline = $false)
     
@@ -147,14 +174,26 @@ function Sync-TallyWithCloud {
         } catch {
             # Continue even if stock query encounters minor hiccup
         }
+
+        # 3. Pull Vouchers from Tally to auto-identify latest voucher number
+        $voucherXmlStr = ""
+        try {
+            $voucherResp = Invoke-RestMethod -Uri $TallyUrl -Method Post -Body $xmlVoucherQuery -ContentType "application/xml; charset=utf-8" -TimeoutSec 5
+            $voucherXmlStr = if ($voucherResp -is [System.Xml.XmlDocument]) { $voucherResp.OuterXml } else { [string]$voucherResp }
+        } catch {
+            # Continue even if voucher query encounters minor hiccup
+        }
         
-        $combinedXml = "$debtorXmlStr`n$stockXmlStr"
+        $combinedXml = "$debtorXmlStr`n$stockXmlStr`n$voucherXmlStr"
         
-        # 3. Push Customers & Products to Cloud
-        Write-Host "[SYNC] Uploading Customers & Products to Cloud Portal..." -ForegroundColor Cyan
+        # 4. Push Customers, Products & Voucher sequences to Cloud
+        Write-Host "[SYNC] Syncing Masters & Vouchers with Cloud Portal..." -ForegroundColor Cyan
         try {
             $pushResult = Invoke-RestMethod -Uri "$CloudUrl/api/masters/tally-push" -Method Post -Body $combinedXml -ContentType "application/xml; charset=utf-8" -TimeoutSec 15
             Write-Host "[SUCCESS] $($pushResult.message)" -ForegroundColor Green
+            if ($pushResult.latestTallyVoucher) {
+                Write-Host "  -> [AUTO-IDENTIFY] Latest Tally voucher: #$($pushResult.latestTallyVoucher) | Next Auto-Bill: #$($pushResult.nextInvoiceNumber)" -ForegroundColor Green
+            }
         } catch {
             Write-Host "[CLOUD NOTICE] Failed to upload masters to Cloud: $($_.Exception.Message)" -ForegroundColor Red
             return @{ Success = $false; Error = "Cloud upload error: $($_.Exception.Message)" }

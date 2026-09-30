@@ -170,6 +170,33 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
     }
   };
 
+  // Handle Auto-Identify Latest Number from Tally & Invoices
+  const handleAutoIdentifySequence = async () => {
+    setSeqError('');
+    setSeqSuccess('');
+    try {
+      setSeqLoading(true);
+      const data = await api.getNextInvoiceNumber();
+      if (data && data.nextSeq) {
+        setSeqForm((prev) => ({
+          ...prev,
+          invoicePrefix: data.prefix || prev.invoicePrefix,
+          nextInvoiceNumber: data.nextSeq
+        }));
+        setSeqSuccess(`⚡ Auto-Identified! Highest existing voucher: #${data.latestIdentified || data.nextSeq - 1}. Next voucher auto-set to #${data.nextSeq}.`);
+        const updated = await api.updateSettings({
+          invoicePrefix: data.prefix || seqForm.invoicePrefix,
+          nextInvoiceNumber: data.nextSeq
+        });
+        if (onSettingsUpdated) onSettingsUpdated(updated);
+      }
+    } catch (err) {
+      setSeqError(err.message || 'Failed to auto-identify voucher sequence.');
+    } finally {
+      setSeqLoading(false);
+    }
+  };
+
   return (
     <div className="profile-page-wrapper">
       {/* 1. Hero / Header Banner */}
@@ -451,12 +478,24 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
 
           {/* Card: Invoice / Voucher Number Sequence */}
           <div className="profile-section-card">
-            <div className="card-heading-group">
-              <div className="card-icon-bubble green">🔢</div>
-              <div>
-                <h3>Voucher &amp; Invoice Number Sequence</h3>
-                <p>Configure starting and sequential numbering for new bills</p>
+            <div className="card-heading-group" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="card-icon-bubble green">🔢</div>
+                <div>
+                  <h3>Voucher &amp; Invoice Number Sequence</h3>
+                  <p>Automatic sequential numbering &amp; Tally Prime synchronization</p>
+                </div>
               </div>
+              <button
+                type="button"
+                className="btn-outline-action"
+                style={{ fontSize: '12px', padding: '6px 12px', borderRadius: '8px' }}
+                onClick={handleAutoIdentifySequence}
+                disabled={seqLoading}
+                title="Query existing invoices and Tally to find the latest voucher number"
+              >
+                {seqLoading ? '🔄 Syncing...' : '⚡ Auto-Identify Latest Number'}
+              </button>
             </div>
 
             {seqSuccess && (
@@ -513,6 +552,15 @@ export default function ProfilePage({ user, onLogout, settings, onSettingsUpdate
               </div>
 
               <div className="profile-action-bar">
+                <button
+                  type="button"
+                  className="btn-outline-action"
+                  onClick={handleAutoIdentifySequence}
+                  disabled={seqLoading}
+                  style={{ marginRight: 'auto' }}
+                >
+                  ⚡ Auto-Detect from Tally &amp; Invoices
+                </button>
                 <button
                   type="submit"
                   className="btn-secondary-save"

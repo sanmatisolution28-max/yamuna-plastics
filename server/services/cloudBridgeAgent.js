@@ -60,6 +60,31 @@ const xmlStockQuery = `<?xml version="1.0" encoding="utf-8"?>
   </BODY>
 </ENVELOPE>`;
 
+const xmlVoucherQuery = `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Collection</TYPE>
+    <ID>SalesVoucherCollection</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+      </STATICVARIABLES>
+      <TDL>
+        <TDLMESSAGE>
+          <COLLECTION NAME="SalesVoucherCollection">
+            <TYPE>Voucher</TYPE>
+            <FETCH>VOUCHERNUMBER, DATE, PARTYLEDGERNAME</FETCH>
+          </COLLECTION>
+        </TDLMESSAGE>
+      </TDL>
+    </DESC>
+  </BODY>
+</ENVELOPE>`;
+
 let isSyncing = false;
 
 export async function executeTallySyncCycle() {
@@ -99,13 +124,29 @@ export async function executeTallySyncCycle() {
       console.warn('[Bridge Agent] Stock Item pull notice:', sErr.message);
     }
 
-    if (!debtorXml && !stockXml) {
+    // 3. Pull Vouchers from local Tally Prime to auto-identify latest voucher number
+    let voucherXml = '';
+    try {
+      const tallyVoucherRes = await fetch(`http://localhost:${TALLY_PORT}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+        body: xmlVoucherQuery,
+        signal: AbortSignal.timeout(6000)
+      });
+      if (tallyVoucherRes.ok) {
+        voucherXml = await tallyVoucherRes.text();
+      }
+    } catch (vErr) {
+      console.warn('[Bridge Agent] Voucher pull notice:', vErr.message);
+    }
+
+    if (!debtorXml && !stockXml && !voucherXml) {
       throw new Error(`Could not connect to Tally Prime on localhost:${TALLY_PORT}. Ensure Tally Prime is open with Connectivity enabled.`);
     }
 
-    const combinedXml = debtorXml + '\n' + stockXml;
+    const combinedXml = debtorXml + '\n' + stockXml + '\n' + voucherXml;
 
-    // 3. Push Debtors and Stock Items to Live Cloud
+    // 4. Push Debtors, Stock Items, and Vouchers to Live Cloud
     const cloudPushRes = await fetch(`${CLOUD_URL}/api/masters/tally-push`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/xml; charset=utf-8' },
@@ -116,6 +157,12 @@ export async function executeTallySyncCycle() {
     const pushData = await cloudPushRes.json().catch(() => ({}));
     const totalParties = pushData.partiesCount || 0;
     const totalItems = pushData.itemsCount || 0;
+    const latestTallyVoucher = pushData.latestTallyVoucher;
+    const nextInvoiceNumber = pushData.nextInvoiceNumber;
+
+    if (latestTallyVoucher) {
+      console.log(`[Bridge Agent] Identified latest voucher in Tally: #${latestTallyVoucher} -> Next voucher auto-set to #${nextInvoiceNumber}`);
+    }
 
     // 3. Check for any pending bills created on the cloud and post them into local Tally
     let syncedBillsCount = 0;

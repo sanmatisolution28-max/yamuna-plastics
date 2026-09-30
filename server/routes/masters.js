@@ -400,11 +400,38 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
   </BODY>
 </ENVELOPE>`;
 
+    // Fetch Vouchers to identify latest voucher number in Tally
+    const voucherRequestXml = `<?xml version="1.0" encoding="utf-8"?>
+<ENVELOPE>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Collection</TYPE>
+    <ID>SalesVoucherCollection</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+      </STATICVARIABLES>
+      <TDL>
+        <TDLMESSAGE>
+          <COLLECTION NAME="SalesVoucherCollection">
+            <TYPE>Voucher</TYPE>
+            <FETCH>VOUCHERNUMBER, DATE, PARTYLEDGERNAME</FETCH>
+          </COLLECTION>
+        </TDLMESSAGE>
+      </TDL>
+    </DESC>
+  </BODY>
+</ENVELOPE>`;
+
     const currentParties = await readJson(PARTIES_FILE, []);
     const currentItems = await readJson(ITEMS_FILE, []);
 
     let debtorXml = '';
     let stockXml = '';
+    let voucherXml = '';
 
     // Request Debtors
     try {
@@ -436,7 +463,22 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
       console.warn('Stock fetch warning:', sErr.message);
     }
 
-    if (!debtorXml && !stockXml) {
+    // Request Vouchers to identify latest voucher sequence automatically
+    try {
+      const vRes = await fetch(`http://${host}:${port}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+        body: voucherRequestXml,
+        signal: AbortSignal.timeout(6000)
+      });
+      if (vRes.ok) {
+        voucherXml = await vRes.text();
+      }
+    } catch (vErr) {
+      console.warn('Voucher fetch warning:', vErr.message);
+    }
+
+    if (!debtorXml && !stockXml && !voucherXml) {
       throw new Error(`Tally Prime is offline on http://${host}:${port}. Please verify Tally is open.`);
     }
 
@@ -446,13 +488,35 @@ router.post('/masters/fetch-from-tally', async (req, res) => {
     await writeJson(PARTIES_FILE, result.parties);
     await writeJson(ITEMS_FILE, result.items);
 
+    // Auto-identify latest voucher from Tally and sync sequence
+    let maxTallyNum = 0;
+    if (voucherXml) {
+      const vchMatches = voucherXml.matchAll(/<VOUCHERNUMBER[^>]*>([^<]+)<\/VOUCHERNUMBER>/gi);
+      for (const m of vchMatches) {
+        const numMatch = m[1].match(/(\d+)$/);
+        if (numMatch) {
+          const n = parseInt(numMatch[1], 10);
+          if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
+        }
+      }
+      if (maxTallyNum > 0) {
+        const settings = await readJson(SETTINGS_FILE, {});
+        if ((Number(settings.nextInvoiceNumber) || 1) <= maxTallyNum) {
+          settings.nextInvoiceNumber = maxTallyNum + 1;
+          await writeJson(SETTINGS_FILE, settings);
+        }
+      }
+    }
+
     res.json({
       success: true,
       message: `Fetched ${result.newPartiesCount + result.updatedPartiesCount} customers and ${result.newItemsCount + result.updatedItemsCount} stock items from Tally Prime!`,
       totalParties: result.parties.length,
       totalItems: result.items.length,
       parties: result.parties,
-      items: result.items
+      items: result.items,
+      latestTallyVoucher: maxTallyNum > 0 ? maxTallyNum : undefined,
+      nextInvoiceNumber: maxTallyNum > 0 ? maxTallyNum + 1 : undefined
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -492,12 +556,14 @@ router.post('/masters/tally-push', async (req, res) => {
         if (!isNaN(n) && n > maxTallyNum) maxTallyNum = n;
       }
     }
+    let updatedNextNumber = undefined;
     if (maxTallyNum > 0) {
       const settings = await readJson(SETTINGS_FILE, {});
       if ((Number(settings.nextInvoiceNumber) || 1) <= maxTallyNum) {
         settings.nextInvoiceNumber = maxTallyNum + 1;
         await writeJson(SETTINGS_FILE, settings);
       }
+      updatedNextNumber = Math.max(Number(settings.nextInvoiceNumber) || 1, maxTallyNum + 1);
     }
 
     res.json({
@@ -505,7 +571,8 @@ router.post('/masters/tally-push', async (req, res) => {
       message: `Tally Masters synchronized! (${result.newPartiesCount + result.updatedPartiesCount} debtors, ${result.newItemsCount + result.updatedItemsCount} items)`,
       partiesCount: result.parties.length,
       itemsCount: result.items.length,
-      nextInvoiceNumber: maxTallyNum > 0 ? maxTallyNum + 1 : undefined
+      latestTallyVoucher: maxTallyNum > 0 ? maxTallyNum : undefined,
+      nextInvoiceNumber: updatedNextNumber
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
