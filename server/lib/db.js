@@ -225,28 +225,46 @@ const SEED_SETTINGS = {
     thresholdAmount: 50000,
     alwaysGenerate: true
   },
-  invoicePrefix: 'YP/26-27/'
+  invoicePrefix: 'YP/26-27/',
+  // Only a starting point for the invoice_seq counter. getSettings/saveSettings
+  // treat nextInvoiceNumber as derived and never persist it.
+  nextInvoiceNumber: 1
 };
 
 export function defaultSettings() {
   return JSON.parse(JSON.stringify(SEED_SETTINGS));
 }
 
+/**
+ * The invoice counter lives in the invoice_seq collection and nowhere else.
+ * nextInvoiceNumber is mirrored here purely so the older settings payload,
+ * which the client still reads, reports the same number that will actually be
+ * issued. It used to be an independent field that nothing but a manual settings
+ * save ever wrote, so it sat at 252 while the real counter had moved to 1200
+ * and the UI advertised a bill number the server would never hand out.
+ */
+function stripCounter(obj) {
+  const { nextInvoiceNumber, ...rest } = obj || {};
+  return rest;
+}
+
 export async function getSettings() {
   const doc = await db.collection('settings').findOne({ _id: 'app' });
-  if (!doc) return defaultSettings();
-  const { _id, updatedAt, ...rest } = doc;
-  return rest;
+  const base = doc ? stripCounter(doc) : defaultSettings();
+  const { _id, updatedAt, nextInvoiceNumber, ...clean } = base;
+  return { ...clean, nextInvoiceNumber: (await getSeqState()).nextValue };
 }
 
 export async function saveSettings(obj) {
   const now = new Date().toISOString();
+  const body = stripCounter(obj);
   await db.collection('settings').updateOne(
     { _id: 'app' },
-    { $set: { ...obj, updatedAt: now } },
+    { $set: { ...body, updatedAt: now } },
     { upsert: true }
   );
-  return obj;
+  const { _id, updatedAt, nextInvoiceNumber, ...clean } = body;
+  return { ...clean, nextInvoiceNumber: (await getSeqState()).nextValue };
 }
 
 // ---------------------------------------------------------------------------

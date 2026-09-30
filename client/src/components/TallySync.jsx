@@ -14,6 +14,18 @@ export default function TallySync({
   const [syncingMasters, setSyncingMasters] = useState(false);
   const [mastersNotice, setMastersNotice] = useState(null);
   const [importingXml, setImportingXml] = useState(false);
+  const [nextNumber, setNextNumber] = useState(null);
+
+  // Read the counter from the server, which owns it. Reading it from the
+  // settings payload showed a stale number that the server would never issue.
+  const loadNextNumber = async () => {
+    try {
+      const res = await api.getMastersNextInvoiceNumber();
+      if (res?.nextSeq) setNextNumber(res.nextSeq);
+    } catch {
+      setNextNumber(null);
+    }
+  };
 
   const checkStatus = async () => {
     setChecking(true);
@@ -33,6 +45,7 @@ export default function TallySync({
 
   useEffect(() => {
     checkStatus();
+    loadNextNumber();
   }, []);
 
   const pendingInvoices = invoices.filter((i) => !i.tallySync?.synced);
@@ -50,6 +63,7 @@ export default function TallySync({
         res = await api.syncAllToTally();
       }
       setSyncResult(res);
+      loadNextNumber();
       if (onRefreshInvoices) onRefreshInvoices();
     } catch (err) {
       setSyncResult({
@@ -72,6 +86,7 @@ export default function TallySync({
           type: 'success',
           text: `⚡ ${res.message || 'Customer Debtors loaded from Tally Prime!'} (${res.totalParties || parties.length} Customers${vchInfo})`
         });
+        loadNextNumber();
         if (onRefreshInvoices) onRefreshInvoices();
       } else {
         setMastersNotice({
@@ -248,7 +263,7 @@ export default function TallySync({
             <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Stock Items (Products)</div>
           </div>
           <div style={{ flex: 1, background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-light)', textAlign: 'center' }}>
-            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--warning-ink)' }}>#{settings?.nextInvoiceNumber || 1}</div>
+            <div style={{ fontSize: '26px', fontWeight: 900, color: 'var(--warning-ink)' }}>#{nextNumber || settings?.nextInvoiceNumber || 1}</div>
             <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-muted)' }}>Next Auto Voucher #</div>
           </div>
         </div>

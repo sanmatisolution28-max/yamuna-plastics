@@ -28,9 +28,46 @@ async function req(method, path, { body, token, bridge, xml } = {}) {
   return { status: res.status, json, text };
 }
 
+/**
+ * Destructive: this deletes every invoice and rewinds the counter.
+ *
+ * It used to read MONGODB_URI, which in production is the live Atlas cluster,
+ * so running the suite against the real database wiped real bills. It now only
+ * acts on MONGO_TEST_URI and refuses to run against a database that does not
+ * look like a throwaway.
+ */
+const TEST_DB_NAME = 'yamuna_test';
+const DESTRUCTIVE_ACK = process.env.ALLOW_DESTRUCTIVE_TESTS;
+
+async function assertDisposableDatabase(uri) {
+  if (!uri) {
+    throw new Error(
+      'MONGO_TEST_URI is not set. This suite deletes data, so it never reads MONGODB_URI.\n' +
+      `Point MONGO_TEST_URI at a throwaway database, e.g. .../${TEST_DB_NAME}`
+    );
+  }
+  if (DESTRUCTIVE_ACK !== 'yes') {
+    throw new Error(
+      'Refusing to run: this suite deletes every invoice and rewinds the counter.\n' +
+      'Re-run with ALLOW_DESTRUCTIVE_TESTS=yes once you have confirmed MONGO_TEST_URI is a test database.'
+    );
+  }
+  const name = (() => {
+    try { return new URL(uri.replace(/^mongodb(\+srv)?:\/\//, 'https://')).pathname.replace(/^\//, ''); }
+    catch { return ''; }
+  })();
+  if (name && name !== TEST_DB_NAME) {
+    throw new Error(
+      `Refusing to run: MONGO_TEST_URI points at database "${name}", not "${TEST_DB_NAME}".\n` +
+      'This suite is destructive and must never touch a live database.'
+    );
+  }
+}
+
 async function resetState() {
   // Clear test data so numbering assertions start from a known point.
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.MONGO_TEST_URI;
+  await assertDisposableDatabase(uri);
   const c = new MongoClient(uri);
   await c.connect();
   const d = c.db();

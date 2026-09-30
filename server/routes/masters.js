@@ -332,6 +332,27 @@ router.post('/parties', async (req, res) => {
 });
 
 // Items / Products
+/**
+ * One endpoint the client can trust for "what is the next bill number".
+ * The counter is read from invoice_seq, so this can never disagree with the
+ * number a real save will be given.
+ */
+router.get('/next-invoice-number', async (req, res) => {
+  try {
+    const settings = await getSettings();
+    const prefix = settings.invoicePrefix || 'YP/26-27/';
+    const { nextValue } = await getSeqState();
+    res.json({
+      prefix,
+      nextSeq: nextValue,
+      invoiceNo: `${prefix}${nextValue}`,
+      latestIdentified: Math.max(0, nextValue - 1)
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/items', async (req, res) => {
   try {
     const items = await getItems();
@@ -420,8 +441,19 @@ router.put('/settings', async (req, res) => {
       tally: { ...(current.tally || {}), ...(req.body.tally || {}) },
       ewayBill: { ...(current.ewayBill || {}), ...(req.body.ewayBill || {}) }
     };
-    await saveSettings(updated);
-    res.json(redactSettings(updated));
+
+    // A client that still posts nextInvoiceNumber means "set the counter", so
+    // route it to the real invoice_seq counter instead of persisting a second
+    // copy in settings that would immediately drift again.
+    if (req.body?.nextInvoiceNumber !== undefined) {
+      const n = Number(req.body.nextInvoiceNumber);
+      if (Number.isInteger(n) && n > 0) {
+        await raiseSeqTo(n, 'settings');
+      }
+    }
+
+    const saved = await saveSettings(updated);
+    res.json(redactSettings(saved));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
